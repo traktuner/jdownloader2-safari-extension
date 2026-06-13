@@ -7,11 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  packages: write
-
-env:
-  IMAGE: ghcr.io/traktuner/jdownloader2-safari
+  contents: write
 
 jobs:
   build:
@@ -29,8 +25,8 @@ jobs:
 
       # CI builds ad-hoc signed (no Apple certificate). The Homebrew cask
       # re-signs the .app locally with the user's "Apple Development" identity
-      # in its postflight, so Safari accepts it without "Allow Unsigned
-      # Extensions". See the cask in the homebrew tap.
+      # and clears quarantine in its postflight, so Safari loads the extension
+      # without "Allow Unsigned Extensions".
       - name: Build (ad-hoc signed)
         run: |
           set -o pipefail
@@ -57,67 +53,13 @@ jobs:
           name: MyJDownloader
           path: MyJDownloader.zip
 
-      # Publish the zip as an OCI artifact to GitHub Packages (ghcr.io).
-      # The blob digest equals sha256(MyJDownloader.zip) — that's what the
-      # Homebrew cask references. Make the package PUBLIC once in the package
-      # settings so the cask can pull it without a token.
-      - name: Push to GitHub Packages (ghcr)
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: oras-project/setup-oras@v1
-      - name: oras push
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          echo "${{ github.token }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
-          oras push "$IMAGE:$VERSION" \
-            --artifact-type application/vnd.myjd-safari.app \
-            MyJDownloader.zip:application/zip
-          oras tag "$IMAGE:$VERSION" latest
-          SHA="${{ steps.package.outputs.sha256 }}"
-          {
-            echo "## Published to ghcr"
-            echo ""
-            echo "Package: \`$IMAGE:$VERSION\`"
-            echo ""
-            echo "Cask values:"
-            echo '```ruby'
-            echo "  version \"$VERSION\""
-            echo "  sha256 \"$SHA\""
-            echo "  url \"https://ghcr.io/v2/traktuner/jdownloader2-safari/blobs/sha256:$SHA\""
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      # Route B: keep the Homebrew cask in the personal tap in sync. The ghcr
-      # digest URL can't be auto-bumped by Homebrew's livecheck (no OCI
-      # strategy; the URL carries the sha, not the version), so the CI updates
-      # version + sha256 + the digest URL in the tap cask itself.
-      # Requires a secret TAP_TOKEN: a PAT with Contents:write on the tap repo.
-      - name: Bump cask in homebrew tap
+      # Public release asset → version-stable URL the Homebrew cask points at,
+      # and which the tap's livecheck/autobump can detect and bump.
+      - name: Create release (on tag)
         if: startsWith(github.ref, 'refs/tags/')
         env:
-          TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if [ -z "$TAP_TOKEN" ]; then
-            echo "TAP_TOKEN secret not set — skipping cask bump."
-            exit 0
-          fi
-          VERSION="${GITHUB_REF_NAME#v}"
-          SHA="${{ steps.package.outputs.sha256 }}"
-          git clone --depth 1 "https://x-access-token:${TAP_TOKEN}@github.com/traktuner/homebrew-tap.git" tap
-          CASK="tap/Casks/j/jdownloader2-safari.rb"
-          sed -i.bak -E \
-            -e "s|^  version \".*\"|  version \"${VERSION}\"|" \
-            -e "s|^  sha256 \".*\"|  sha256 \"${SHA}\"|" \
-            -e "s|^  url \"https://ghcr\.io/.*\"|  url \"https://ghcr.io/v2/traktuner/jdownloader2-safari/blobs/sha256:${SHA}\"|" \
-            "$CASK"
-          rm -f "${CASK}.bak"
-          cd tap
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet; then
-            echo "Cask already up to date."
-          else
-            git add Casks/j/jdownloader2-safari.rb
-            git commit -m "jdownloader2-safari ${VERSION}"
-            git push
-          fi
+          gh release create "$GITHUB_REF_NAME" MyJDownloader.zip \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Automated build. SHA256: \`${{ steps.package.outputs.sha256 }}\`"
