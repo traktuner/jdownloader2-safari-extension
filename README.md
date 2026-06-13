@@ -2,10 +2,10 @@
 
 A Safari port of the MyJDownloader browser extension, for **personal use**.
 
-> **Not affiliated with AppWork GmbH.** This is a private, personal
-> interoperability port of the official MyJDownloader extension so it runs in
-> Safari. The original extension and the MyJDownloader / JDownloader names and
-> assets belong to AppWork GmbH. Do not publish or redistribute this.
+> **Unofficial — not made by AppWork GmbH.** A Safari port of the
+> MyJDownloader browser extension. MyJDownloader and JDownloader are products
+> and trademarks of AppWork GmbH, and all rights to the original extension are
+> theirs. Shared for personal/community use only — not for promotion or sale.
 
 ## What was changed for Safari
 
