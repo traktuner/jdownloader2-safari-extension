@@ -1,0 +1,7 @@
+build/
+build_test/
+DerivedData/
+*.xcuserstate
+**/xcuserdata/
+.DS_Store
+*.zip

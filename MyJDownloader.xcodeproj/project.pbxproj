@@ -1,0 +1,665 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		E94855992FDD25BC00EAC061 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E94855982FDD25BC00EAC061 /* AppDelegate.swift */; };
+		E948559D2FDD25BC00EAC061 /* Main.html in Resources */ = {isa = PBXBuildFile; fileRef = E948559B2FDD25BC00EAC061 /* Main.html */; };
+		E948559F2FDD25BC00EAC061 /* Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = E948559E2FDD25BC00EAC061 /* Icon.png */; };
+		E94855A12FDD25BC00EAC061 /* Style.css in Resources */ = {isa = PBXBuildFile; fileRef = E94855A02FDD25BC00EAC061 /* Style.css */; };
+		E94855A32FDD25BC00EAC061 /* Script.js in Resources */ = {isa = PBXBuildFile; fileRef = E94855A22FDD25BC00EAC061 /* Script.js */; };
+		E94855A52FDD25BC00EAC061 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E94855A42FDD25BC00EAC061 /* ViewController.swift */; };
+		E94855A82FDD25BC00EAC061 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = E94855A62FDD25BC00EAC061 /* Main.storyboard */; };
+		E94855AA2FDD25BD00EAC061 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E94855A92FDD25BD00EAC061 /* Assets.xcassets */; };
+		E94855B12FDD25BD00EAC061 /* MyJDownloader Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E94855B02FDD25BD00EAC061 /* MyJDownloader Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E94855B62FDD25BD00EAC061 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = E94855B52FDD25BD00EAC061 /* SafariWebExtensionHandler.swift */; };
+		E94855D22FDD25BD00EAC061 /* res in Resources */ = {isa = PBXBuildFile; fileRef = E94855C22FDD25BD00EAC061 /* res */; };
+		E94855D32FDD25BD00EAC061 /* index.html in Resources */ = {isa = PBXBuildFile; fileRef = E94855C32FDD25BD00EAC061 /* index.html */; };
+		E94855D42FDD25BD00EAC061 /* images in Resources */ = {isa = PBXBuildFile; fileRef = E94855C42FDD25BD00EAC061 /* images */; };
+		E94855D52FDD25BD00EAC061 /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = E94855C52FDD25BD00EAC061 /* popup.html */; };
+		E94855D62FDD25BD00EAC061 /* _metadata in Resources */ = {isa = PBXBuildFile; fileRef = E94855C62FDD25BD00EAC061 /* _metadata */; };
+		E94855D72FDD25BD00EAC061 /* autograbber-indicator.html in Resources */ = {isa = PBXBuildFile; fileRef = E94855C72FDD25BD00EAC061 /* autograbber-indicator.html */; };
+		E94855D82FDD25BD00EAC061 /* toolbar.html in Resources */ = {isa = PBXBuildFile; fileRef = E94855C82FDD25BD00EAC061 /* toolbar.html */; };
+		E94855D92FDD25BD00EAC061 /* styles in Resources */ = {isa = PBXBuildFile; fileRef = E94855C92FDD25BD00EAC061 /* styles */; };
+		E94855DA2FDD25BD00EAC061 /* contentscripts in Resources */ = {isa = PBXBuildFile; fileRef = E94855CA2FDD25BD00EAC061 /* contentscripts */; };
+		E94855DB2FDD25BD00EAC061 /* buildMeta.json in Resources */ = {isa = PBXBuildFile; fileRef = E94855CB2FDD25BD00EAC061 /* buildMeta.json */; };
+		E94855DC2FDD25BD00EAC061 /* scripts in Resources */ = {isa = PBXBuildFile; fileRef = E94855CC2FDD25BD00EAC061 /* scripts */; };
+		E94855DD2FDD25BD00EAC061 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = E94855CD2FDD25BD00EAC061 /* manifest.json */; };
+		E94855DE2FDD25BD00EAC061 /* _locales in Resources */ = {isa = PBXBuildFile; fileRef = E94855CE2FDD25BD00EAC061 /* _locales */; };
+		E94855DF2FDD25BD00EAC061 /* partials in Resources */ = {isa = PBXBuildFile; fileRef = E94855CF2FDD25BD00EAC061 /* partials */; };
+		E94855E02FDD25BD00EAC061 /* loginNeeded.html in Resources */ = {isa = PBXBuildFile; fileRef = E94855D02FDD25BD00EAC061 /* loginNeeded.html */; };
+		E94855E12FDD25BD00EAC061 /* vendor in Resources */ = {isa = PBXBuildFile; fileRef = E94855D12FDD25BD00EAC061 /* vendor */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		E94855B22FDD25BD00EAC061 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E948558D2FDD25BC00EAC061 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E94855AF2FDD25BD00EAC061;
+			remoteInfo = "MyJDownloader Extension";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E94855BD2FDD25BD00EAC061 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				E94855B12FDD25BD00EAC061 /* MyJDownloader Extension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		E94855952FDD25BC00EAC061 /* MyJDownloader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyJDownloader.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E94855982FDD25BC00EAC061 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		E948559C2FDD25BC00EAC061 /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = Base; path = Base.lproj/Main.html; sourceTree = "<group>"; };
+		E948559E2FDD25BC00EAC061 /* Icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Icon.png; sourceTree = "<group>"; };
+		E94855A02FDD25BC00EAC061 /* Style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = Style.css; sourceTree = "<group>"; };
+		E94855A22FDD25BC00EAC061 /* Script.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = Script.js; sourceTree = "<group>"; };
+		E94855A42FDD25BC00EAC061 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		E94855A72FDD25BC00EAC061 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		E94855A92FDD25BD00EAC061 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		E94855AB2FDD25BD00EAC061 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		E94855B02FDD25BD00EAC061 /* MyJDownloader Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "MyJDownloader Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		E94855B52FDD25BD00EAC061 /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
+		E94855B72FDD25BD00EAC061 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		E94855C22FDD25BD00EAC061 /* res */ = {isa = PBXFileReference; lastKnownFileType = folder; name = res; path = Resources/res; sourceTree = "<group>"; };
+		E94855C32FDD25BD00EAC061 /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = index.html; path = Resources/index.html; sourceTree = "<group>"; };
+		E94855C42FDD25BD00EAC061 /* images */ = {isa = PBXFileReference; lastKnownFileType = folder; name = images; path = Resources/images; sourceTree = "<group>"; };
+		E94855C52FDD25BD00EAC061 /* popup.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = popup.html; path = Resources/popup.html; sourceTree = "<group>"; };
+		E94855C62FDD25BD00EAC061 /* _metadata */ = {isa = PBXFileReference; lastKnownFileType = folder; name = _metadata; path = Resources/_metadata; sourceTree = "<group>"; };
+		E94855C72FDD25BD00EAC061 /* autograbber-indicator.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = "autograbber-indicator.html"; path = "Resources/autograbber-indicator.html"; sourceTree = "<group>"; };
+		E94855C82FDD25BD00EAC061 /* toolbar.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = toolbar.html; path = Resources/toolbar.html; sourceTree = "<group>"; };
+		E94855C92FDD25BD00EAC061 /* styles */ = {isa = PBXFileReference; lastKnownFileType = folder; name = styles; path = Resources/styles; sourceTree = "<group>"; };
+		E94855CA2FDD25BD00EAC061 /* contentscripts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = contentscripts; path = Resources/contentscripts; sourceTree = "<group>"; };
+		E94855CB2FDD25BD00EAC061 /* buildMeta.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = buildMeta.json; path = Resources/buildMeta.json; sourceTree = "<group>"; };
+		E94855CC2FDD25BD00EAC061 /* scripts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = scripts; path = Resources/scripts; sourceTree = "<group>"; };
+		E94855CD2FDD25BD00EAC061 /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = manifest.json; path = Resources/manifest.json; sourceTree = "<group>"; };
+		E94855CE2FDD25BD00EAC061 /* _locales */ = {isa = PBXFileReference; lastKnownFileType = folder; name = _locales; path = Resources/_locales; sourceTree = "<group>"; };
+		E94855CF2FDD25BD00EAC061 /* partials */ = {isa = PBXFileReference; lastKnownFileType = folder; name = partials; path = Resources/partials; sourceTree = "<group>"; };
+		E94855D02FDD25BD00EAC061 /* loginNeeded.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = loginNeeded.html; path = Resources/loginNeeded.html; sourceTree = "<group>"; };
+		E94855D12FDD25BD00EAC061 /* vendor */ = {isa = PBXFileReference; lastKnownFileType = folder; name = vendor; path = Resources/vendor; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		E94855922FDD25BC00EAC061 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E94855AD2FDD25BD00EAC061 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		E948558C2FDD25BC00EAC061 = {
+			isa = PBXGroup;
+			children = (
+				E94855972FDD25BC00EAC061 /* MyJDownloader */,
+				E94855B42FDD25BD00EAC061 /* MyJDownloader Extension */,
+				E94855962FDD25BC00EAC061 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		E94855962FDD25BC00EAC061 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E94855952FDD25BC00EAC061 /* MyJDownloader.app */,
+				E94855B02FDD25BD00EAC061 /* MyJDownloader Extension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E94855972FDD25BC00EAC061 /* MyJDownloader */ = {
+			isa = PBXGroup;
+			children = (
+				E94855982FDD25BC00EAC061 /* AppDelegate.swift */,
+				E94855A42FDD25BC00EAC061 /* ViewController.swift */,
+				E94855A62FDD25BC00EAC061 /* Main.storyboard */,
+				E94855A92FDD25BD00EAC061 /* Assets.xcassets */,
+				E94855AB2FDD25BD00EAC061 /* Info.plist */,
+				E948559A2FDD25BC00EAC061 /* Resources */,
+			);
+			path = MyJDownloader;
+			sourceTree = "<group>";
+		};
+		E948559A2FDD25BC00EAC061 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				E948559B2FDD25BC00EAC061 /* Main.html */,
+				E948559E2FDD25BC00EAC061 /* Icon.png */,
+				E94855A02FDD25BC00EAC061 /* Style.css */,
+				E94855A22FDD25BC00EAC061 /* Script.js */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		E94855B42FDD25BD00EAC061 /* MyJDownloader Extension */ = {
+			isa = PBXGroup;
+			children = (
+				E94855C12FDD25BD00EAC061 /* Resources */,
+				E94855B52FDD25BD00EAC061 /* SafariWebExtensionHandler.swift */,
+				E94855B72FDD25BD00EAC061 /* Info.plist */,
+			);
+			path = "MyJDownloader Extension";
+			sourceTree = "<group>";
+		};
+		E94855C12FDD25BD00EAC061 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				E94855C22FDD25BD00EAC061 /* res */,
+				E94855C32FDD25BD00EAC061 /* index.html */,
+				E94855C42FDD25BD00EAC061 /* images */,
+				E94855C52FDD25BD00EAC061 /* popup.html */,
+				E94855C62FDD25BD00EAC061 /* _metadata */,
+				E94855C72FDD25BD00EAC061 /* autograbber-indicator.html */,
+				E94855C82FDD25BD00EAC061 /* toolbar.html */,
+				E94855C92FDD25BD00EAC061 /* styles */,
+				E94855CA2FDD25BD00EAC061 /* contentscripts */,
+				E94855CB2FDD25BD00EAC061 /* buildMeta.json */,
+				E94855CC2FDD25BD00EAC061 /* scripts */,
+				E94855CD2FDD25BD00EAC061 /* manifest.json */,
+				E94855CE2FDD25BD00EAC061 /* _locales */,
+				E94855CF2FDD25BD00EAC061 /* partials */,
+				E94855D02FDD25BD00EAC061 /* loginNeeded.html */,
+				E94855D12FDD25BD00EAC061 /* vendor */,
+			);
+			name = Resources;
+			path = "MyJDownloader Extension";
+			sourceTree = SOURCE_ROOT;
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E94855942FDD25BC00EAC061 /* MyJDownloader */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E94855BE2FDD25BD00EAC061 /* Build configuration list for PBXNativeTarget "MyJDownloader" */;
+			buildPhases = (
+				E94855912FDD25BC00EAC061 /* Sources */,
+				E94855922FDD25BC00EAC061 /* Frameworks */,
+				E94855932FDD25BC00EAC061 /* Resources */,
+				E94855BD2FDD25BD00EAC061 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E94855B32FDD25BD00EAC061 /* PBXTargetDependency */,
+			);
+			name = MyJDownloader;
+			packageProductDependencies = (
+			);
+			productName = MyJDownloader;
+			productReference = E94855952FDD25BC00EAC061 /* MyJDownloader.app */;
+			productType = "com.apple.product-type.application";
+		};
+		E94855AF2FDD25BD00EAC061 /* MyJDownloader Extension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E94855BA2FDD25BD00EAC061 /* Build configuration list for PBXNativeTarget "MyJDownloader Extension" */;
+			buildPhases = (
+				E94855AC2FDD25BD00EAC061 /* Sources */,
+				E94855AD2FDD25BD00EAC061 /* Frameworks */,
+				E94855AE2FDD25BD00EAC061 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "MyJDownloader Extension";
+			packageProductDependencies = (
+			);
+			productName = "MyJDownloader Extension";
+			productReference = E94855B02FDD25BD00EAC061 /* MyJDownloader Extension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E948558D2FDD25BC00EAC061 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2650;
+				LastUpgradeCheck = 2650;
+				TargetAttributes = {
+					E94855942FDD25BC00EAC061 = {
+						CreatedOnToolsVersion = 26.5;
+					};
+					E94855AF2FDD25BD00EAC061 = {
+						CreatedOnToolsVersion = 26.5;
+					};
+				};
+			};
+			buildConfigurationList = E94855902FDD25BC00EAC061 /* Build configuration list for PBXProject "MyJDownloader" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = E948558C2FDD25BC00EAC061;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = E94855962FDD25BC00EAC061 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E94855942FDD25BC00EAC061 /* MyJDownloader */,
+				E94855AF2FDD25BD00EAC061 /* MyJDownloader Extension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		E94855932FDD25BC00EAC061 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E948559F2FDD25BC00EAC061 /* Icon.png in Resources */,
+				E94855A82FDD25BC00EAC061 /* Main.storyboard in Resources */,
+				E94855A32FDD25BC00EAC061 /* Script.js in Resources */,
+				E948559D2FDD25BC00EAC061 /* Main.html in Resources */,
+				E94855AA2FDD25BD00EAC061 /* Assets.xcassets in Resources */,
+				E94855A12FDD25BC00EAC061 /* Style.css in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E94855AE2FDD25BD00EAC061 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E94855DF2FDD25BD00EAC061 /* partials in Resources */,
+				E94855DA2FDD25BD00EAC061 /* contentscripts in Resources */,
+				E94855DC2FDD25BD00EAC061 /* scripts in Resources */,
+				E94855D42FDD25BD00EAC061 /* images in Resources */,
+				E94855E12FDD25BD00EAC061 /* vendor in Resources */,
+				E94855D52FDD25BD00EAC061 /* popup.html in Resources */,
+				E94855E02FDD25BD00EAC061 /* loginNeeded.html in Resources */,
+				E94855DD2FDD25BD00EAC061 /* manifest.json in Resources */,
+				E94855D92FDD25BD00EAC061 /* styles in Resources */,
+				E94855D22FDD25BD00EAC061 /* res in Resources */,
+				E94855DB2FDD25BD00EAC061 /* buildMeta.json in Resources */,
+				E94855D72FDD25BD00EAC061 /* autograbber-indicator.html in Resources */,
+				E94855D82FDD25BD00EAC061 /* toolbar.html in Resources */,
+				E94855D62FDD25BD00EAC061 /* _metadata in Resources */,
+				E94855DE2FDD25BD00EAC061 /* _locales in Resources */,
+				E94855D32FDD25BD00EAC061 /* index.html in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E94855912FDD25BC00EAC061 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E94855A52FDD25BC00EAC061 /* ViewController.swift in Sources */,
+				E94855992FDD25BC00EAC061 /* AppDelegate.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E94855AC2FDD25BD00EAC061 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E94855B62FDD25BD00EAC061 /* SafariWebExtensionHandler.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		E94855B32FDD25BD00EAC061 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E94855AF2FDD25BD00EAC061 /* MyJDownloader Extension */;
+			targetProxy = E94855B22FDD25BD00EAC061 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		E948559B2FDD25BC00EAC061 /* Main.html */ = {
+			isa = PBXVariantGroup;
+			children = (
+				E948559C2FDD25BC00EAC061 /* Base */,
+			);
+			name = Main.html;
+			sourceTree = "<group>";
+		};
+		E94855A62FDD25BC00EAC061 /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				E94855A72FDD25BC00EAC061 /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		E94855B82FDD25BD00EAC061 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		E94855B92FDD25BD00EAC061 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		E94855BB2FDD25BD00EAC061 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 587T3YR252;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "MyJDownloader Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "MyJDownloader Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.myjdownloader.MyJDownloader.Extension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		E94855BC2FDD25BD00EAC061 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 587T3YR252;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "MyJDownloader Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "MyJDownloader Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.myjdownloader.MyJDownloader.Extension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		E94855BF2FDD25BD00EAC061 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 587T3YR252;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MyJDownloader/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MyJDownloader;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.myjdownloader.MyJDownloader;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		E94855C02FDD25BD00EAC061 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 587T3YR252;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MyJDownloader/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MyJDownloader;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.myjdownloader.MyJDownloader;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		E94855902FDD25BC00EAC061 /* Build configuration list for PBXProject "MyJDownloader" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E94855B82FDD25BD00EAC061 /* Debug */,
+				E94855B92FDD25BD00EAC061 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E94855BA2FDD25BD00EAC061 /* Build configuration list for PBXNativeTarget "MyJDownloader Extension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E94855BB2FDD25BD00EAC061 /* Debug */,
+				E94855BC2FDD25BD00EAC061 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E94855BE2FDD25BD00EAC061 /* Build configuration list for PBXNativeTarget "MyJDownloader" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E94855BF2FDD25BD00EAC061 /* Debug */,
+				E94855C02FDD25BD00EAC061 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = E948558D2FDD25BC00EAC061 /* Project object */;
+}
