@@ -117,3 +117,7 @@ to the Trash. Multiple certificates with the same name also made signing
 ambiguous, and unchecked signing failures allowed installation to continue.
 The certificate-free cask removes that dependency and fails on verification errors.
 Do not disable Gatekeeper or XProtect globally to repair an older installation.
+
+For supported Click'n'Load transports and remaining browser restrictions, see the
+[link-crypter compatibility matrix](docs/CNL-COMPATIBILITY.md). Compatibility
+with standard CNL2 does not imply support for every crypter.

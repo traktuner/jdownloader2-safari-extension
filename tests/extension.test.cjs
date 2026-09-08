@@ -8,13 +8,31 @@ const resources = path.join(__dirname, '../MyJDownloader Extension/Resources');
 const read = file => fs.readFileSync(path.join(resources, file), 'utf8');
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
-function page(t) {
-  const listeners = [], captures = [], timers = new Set();
-  let reply, ctx;
+function page(t, options = {}) {
+  const listeners = [], contentListeners = [], submits = [], captures = [], timers = new Set(), nodes = {};
+  let reply, pageContext, rootChanged;
+  function postMessage(data) {
+    queueMicrotask(() => {
+      listeners.forEach(fn => fn({source: window, data}));
+      contentListeners.forEach(fn => fn({source: contentWindow, data}));
+    });
+  }
+  class Form {
+    constructor(action, fields) { this.action = action; this.fields = fields; }
+    submit() { throw new Error('Captured form must not navigate'); }
+  }
+  function DOMFormData(form) {
+    const data = new FormData();
+    for (const [key, value] of form ? form.fields : []) data.append(key, value);
+    return data;
+  }
+  Object.defineProperty(DOMFormData, Symbol.hasInstance, {value: value => value instanceof FormData});
   const window = {
     addEventListener(type, listener) { if (type === 'message') listeners.push(listener); },
-    postMessage(data) { queueMicrotask(() => listeners.forEach(fn => fn({source: window, data}))); },
+    postMessage,
+    HTMLFormElement: Form,
     fetch() { return Promise.resolve(new Response('network')); },
+    navigator: {sendBeacon() { throw new Error('Captured beacon must not reach the network'); }},
     XMLHttpRequest: class extends EventTarget {
       open() {}
       send() { throw new Error('Captured request must not reach the network'); }
@@ -25,20 +43,48 @@ function page(t) {
       }
     }
   };
-  const document = {
-    createElement() { return {textContent: '', remove() {}}; },
-    head: {appendChild(script) { vm.runInContext(script.textContent, ctx); }},
-    addEventListener() {}
+  const contentWindow = {
+    addEventListener(type, listener) { if (type === 'message') contentListeners.push(listener); },
+    postMessage
   };
-  ctx = vm.createContext({window, document, location: {href: 'https://example.org/helper.html', pathname: '/helper.html'},
-    navigator: {}, screen: {}, URL, URLSearchParams, FormData, Request, Response, Event, console: {info() {}, error() {}},
+  const head = {appendChild(script) {
+    if (!options.blockInline) vm.runInContext(script.textContent, pageContext);
+  }};
+  const document = {
+    baseURI: options.baseURI || 'https://example.org/helper.html',
+    createElement(tag) { return {tag, textContent: '', style: {}, setAttribute() {}, remove() {}}; },
+    head: options.noRoot ? null : head,
+    body: {appendChild(node) { nodes[node.id] = node; node.isConnected = true; }},
+    getElementById(id) { return nodes[id]; },
+    addEventListener(type, listener) { if (type === 'submit') submits.push(listener); },
+    open() { throw new Error('Sending a form must preserve the original page'); }
+  };
+  const globals = {document, location: {href: 'https://example.org/helper.html', pathname: '/helper.html'},
+    screen: {}, URL, URLSearchParams, FormData: DOMFormData, Request, Response, Blob, Event, console: {info() {}, error() {}},
+    MutationObserver: class {
+      constructor(callback) { rootChanged = callback; }
+      observe() {}
+      disconnect() { rootChanged = null; }
+    },
     setTimeout(fn, delay) { const id = setTimeout(fn, delay); timers.add(id); return id; },
-    clearTimeout(id) { clearTimeout(id); timers.delete(id); },
+    clearTimeout(id) { clearTimeout(id); timers.delete(id); }
+  };
+  pageContext = vm.createContext({...globals, window, HTMLFormElement: Form, navigator: window.navigator});
+  const contentContext = vm.createContext({...globals, window: contentWindow, navigator: {},
     chrome: {runtime: {sendMessage(message, callback) { captures.push(message); reply = callback; }}}
   });
   t.after(() => timers.forEach(clearTimeout));
-  vm.runInContext(read('contentscripts/cnlCaptureContentscript.js'), ctx);
-  return {window, captures, reply(value) { assert.ok(reply); reply(value); }};
+  vm.runInContext(read('contentscripts/cnlCaptureContentscript.js'), contentContext);
+  return {window, captures, nodes,
+    attachRoot() { document.head = head; assert.ok(rootChanged); rootChanged(); },
+    reply(value) { assert.ok(reply); reply(value); },
+    submit(form, submitter) {
+      const event = {target: form, submitter, defaultPrevented: false,
+        preventDefault() { this.defaultPrevented = true; }, stopImmediatePropagation() { this.stopped = true; }};
+      for (const listener of submits) { listener(event); if (event.stopped) break; }
+      return event;
+    }
+  };
 }
 
 test('CnL only intercepts exact loopback endpoints', async t => {
@@ -49,6 +95,16 @@ test('CnL only intercepts exact loopback endpoints', async t => {
     assert.equal(await (await p.window.fetch(url, {body: 'urls=x'})).text(), 'network');
   }
   assert.equal(p.captures.length, 0);
+});
+
+test('page hook waits for the document root instead of losing early injection', async t => {
+  const p = page(t, {noRoot: true});
+  p.attachRoot();
+  const response = p.window.fetch('http://localhost:9666/flash/add', {body: 'urls=https://example.org/a'});
+  await tick();
+  assert.equal(p.captures.length, 1);
+  p.reply({data: {}});
+  assert.equal(await (await response).text(), 'success');
 });
 
 test('fetch(Request) forwards the body and waits for the actual device acknowledgment', async t => {
@@ -90,6 +146,70 @@ test('XHR dispatches one completion after acknowledgment', async t => {
   assert.equal(changes, 1);
   assert.equal(xhr.status, 200);
   assert.equal(xhr.responseText, 'success');
+});
+
+test('GET payloads and document base URLs reach the exact CnL endpoint', async t => {
+  const p = page(t, {baseURI: 'http://localhost:9666/'});
+  const response = p.window.fetch('/flash/add?urls=https%3A%2F%2Fexample.org%2Fa&package=Query',
+    {body: new URLSearchParams({package: 'Body'})});
+  await tick();
+  assert.equal(p.captures[0].data.formData.urls, 'https://example.org/a');
+  assert.equal(p.captures[0].data.formData.package, 'Body');
+  assert.match(p.captures[0].data.cnlUrl, /^http:\/\/localhost:9666\/flash\/add/);
+  p.reply({data: {}});
+  assert.equal(await (await response).text(), 'success');
+});
+
+test('JDownloader discovery via fetch and XHR does not send a download', async t => {
+  const p = page(t);
+  const response = await p.window.fetch('http://127.0.0.1:9666/jdcheck.js?cache=1');
+  assert.match(await response.text(), /jdownloader = true/);
+  const xhr = new p.window.XMLHttpRequest();
+  xhr.open('GET', 'http://localhost:9666/jdcheck.js');
+  xhr.send();
+  await tick();
+  assert.equal(xhr.status, 200);
+  assert.match(xhr.responseText, /jdownloader = true/);
+  assert.equal(p.captures.length, 0);
+  assert.equal(await (await p.window.fetch('https://example.org/jdcheck.js')).text(), 'network');
+});
+
+test('Blob bodies work for sendBeacon without optimistic device success', async t => {
+  const p = page(t);
+  assert.equal(p.window.navigator.sendBeacon('http://localhost:9666/flash/addcrypted2',
+    new Blob(['crypted=encrypted&jk=key'], {type: 'application/x-www-form-urlencoded'})), true);
+  for (let i = 0; i < 20 && !p.captures.length; i++) await tick();
+  assert.equal(p.captures[0].data.formData.crypted, 'encrypted');
+  p.reply({error: 'NO_CONNECTED_DEVICE'});
+  await tick();
+});
+
+test('isolated form fallback survives blocked inline script and honors submitter action', async t => {
+  const p = page(t, {blockInline: true});
+  const form = new p.window.HTMLFormElement('https://example.org/original', [['crypted', 'x'], ['jk', 'y']]);
+  const submitter = {hasAttribute(name) { return name === 'formaction'; },
+    formAction: 'http://localhost:9666/flash/addcrypted2', name: 'source', value: 'https://example.org/container'};
+  const event = p.submit(form, submitter);
+  assert.equal(event.defaultPrevented, true);
+  await tick();
+  assert.equal(p.captures.length, 1);
+  assert.equal(p.captures[0].data.formData.source, 'https://example.org/container');
+  p.reply({data: {}});
+  await tick();
+  assert.equal(Object.values(p.nodes)[0].textContent, 'An JDownloader gesendet.');
+});
+
+test('programmatic form.submit is captured once while ordinary forms are untouched', async t => {
+  const p = page(t);
+  const unrelated = new p.window.HTMLFormElement('https://example.org/post', [['urls', 'x']]);
+  assert.equal(p.submit(unrelated).defaultPrevented, false);
+  const form = new p.window.HTMLFormElement('http://localhost:9666/flash/add', [['urls', 'https://example.org/a']]);
+  form.submit();
+  await tick();
+  assert.equal(p.captures.length, 1);
+  p.reply({data: {}});
+  await tick();
+  assert.equal(Object.values(p.nodes)[0].textContent, 'An JDownloader gesendet.');
 });
 
 test('background validates both plain and encrypted CnL payloads', () => {
