@@ -46,6 +46,7 @@ final class JDClient: NSObject, ObservableObject {
 
     @Published var connecting = false
     @Published var connected = false
+    @Published private(set) var accountEmail = ""
     @Published var lastError: String?
     @Published var deviceError: String?
     @Published var devices: [Device] = []
@@ -140,6 +141,7 @@ final class JDClient: NSObject, ObservableObject {
 
     func connect(email: String, pass: String, automatically: Bool = false) {
         guard !connecting else { return }
+        accountEmail = email
         resetSession()
         lastError = nil
         connecting = true
@@ -152,10 +154,15 @@ final class JDClient: NSObject, ObservableObject {
                 self.connecting = false
                 self.connected = ok
                 if ok {
-                    if let error = Keychain.save(email: email, pass: pass) {
-                        self.lastError = error
-                    } else {
-                        UserDefaults.standard.set(false, forKey: "automaticLoginDisabled")
+                    // Automatic login already read these exact credentials.
+                    // Writing them back can trigger an unnecessary second
+                    // Keychain authorization request.
+                    if !automatically {
+                        if let error = Keychain.save(email: email, pass: pass) {
+                            self.lastError = error
+                        } else {
+                            UserDefaults.standard.set(false, forKey: "automaticLoginDisabled")
+                        }
                     }
                     self.refreshDevices()
                 } else {
@@ -518,7 +525,9 @@ struct SettingsView: View {
         }
         .onAppear {
             refreshExtensionState()
-            if let c = Keychain.load() { email = c.email }
+            // Opening the window must not read the saved password just to
+            // display an email address. The client retains it in memory.
+            if email.isEmpty { email = jd.accountEmail }
         }
     }
 
