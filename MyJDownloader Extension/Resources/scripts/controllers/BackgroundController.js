@@ -11,6 +11,37 @@
 angular.module('myjdWebextensionApp')
   .controller('BackgroundCtrl', ['$scope', '$timeout', '$q', 'Rc2Service', 'BrowserService', 'PopupIconService', 'CnlService', 'StorageService', 'ClipboardHistoryService', 'StringUtilsService', 'myjdClientFactory', 'myjdDeviceClientFactory', 'ExtensionMessagingService', 'PopupCandidatesService', 'ExtensionI18nService',
     function ($scope, $timeout, $q, Rc2Service, BrowserService, PopupIconService, cnlService, StorageService, ClipboardHistoryService, StringUtilsService, myjdClientFactory, myjdDeviceClientFactory, ExtensionMessagingService, PopupCandidatesService, ExtensionI18nService) {
+      var loginDraft = null;
+      var loginDraftTimer = null;
+      function clearLoginDraft() {
+        loginDraft = null;
+        if (loginDraftTimer) $timeout.cancel(loginDraftTimer);
+        loginDraftTimer = null;
+      }
+      // Remove the previous implementation's on-disk plaintext draft without
+      // ever reading it back. Session credentials belong in memory only.
+      chrome.storage.local.remove("LOGIN_DRAFT");
+      function isLoginPage(sender) {
+        var url = sender && typeof sender.url === "string" ? sender.url.split(/[?#]/)[0] : "";
+        return url === chrome.runtime.getURL("popup.html") || url === chrome.runtime.getURL("index.html");
+      }
+      ExtensionMessagingService.addListener("myjd-login-draft", "get", function (request, sender, respond) {
+        if (!isLoginPage(sender)) { respond({error: "Invalid sender"}); return; }
+        if (loginDraft && Date.now() >= loginDraft.expiresAt) clearLoginDraft();
+        respond({data: loginDraft});
+      });
+      ExtensionMessagingService.addListener("myjd-login-draft", "set", function (request, sender, respond) {
+        if (!isLoginPage(sender)) { respond({error: "Invalid sender"}); return; }
+        clearLoginDraft();
+        var data = request.data;
+        if (data && !$scope.state.isConnected && typeof data.email === "string" && typeof data.password === "string" &&
+            data.email.length <= 1024 && data.password.length <= 4096 && (data.email || data.password)) {
+          loginDraft = {email: data.email, password: data.password, expiresAt: Date.now() + 5 * 60 * 1000};
+          loginDraftTimer = $timeout(clearLoginDraft, 5 * 60 * 1000);
+        }
+        respond({data: true});
+      });
+
       let urlRegexp = new RegExp("([a-zA-Z0-9]+://)?([a-zA-Z0-9_]+:[a-zA-Z0-9_]+@)?([a-zA-Z0-9.-]+\\.[A-Za-z]{2,4})(:[0-9]+)?(/.*)?");
       let requestIDCounter = 0;
       let requestQueue = {
@@ -456,56 +487,95 @@ angular.module('myjdWebextensionApp')
         return hex;
       }
 
-      function sendCnlDirect(formData, sourceUrl) {
-        try {
-          var generic = {};
-          Object.keys(formData).forEach(function (k) {
-            var v = formData[k];
-            generic[k] = ($.isArray(v) && v[0] !== undefined) ? v[0] : v;
-          });
-          var dummyUrl = "https://dummycnl.jdownloader.org/#" + encodeURIComponent(utf8ToHex(JSON.stringify(generic)));
-
-          var query = { links: dummyUrl, permission: true };
-          var src = generic.source || sourceUrl;
-          if (src) query.sourceUrl = src;
-          if (generic.package) query.packageName = generic.package;
-          if (generic.passwords) {
-            query.downloadPassword = $.isArray(generic.passwords) ? generic.passwords.join(" ") : generic.passwords;
+      function selectCnlDevice(devices, preferred) {
+        if (!devices || !devices.length) return null;
+        if (preferred && preferred.id) {
+          for (var i = 0; i < devices.length; i++) {
+            if (devices[i].id === preferred.id) return devices[i];
           }
-
-          StorageService.get([StorageService.STORAGE_DEVICE_LIST_KEY, StorageService.SETTINGS_DEFAULT_PREFERRED_JD], function (result) {
-            var devices = (result && result[StorageService.STORAGE_DEVICE_LIST_KEY]) || [];
-            if (!devices.length) {
-              console.error("[MyJD] CnL: no connected device — log in via the popup first");
-              return;
-            }
-            var preferred = result[StorageService.SETTINGS_DEFAULT_PREFERRED_JD];
-            var device = null;
-            if (preferred && preferred.id) {
-              for (var i = 0; i < devices.length; i++) {
-                if (devices[i].id === preferred.id) { device = devices[i]; break; }
-              }
-            }
-            if (!device) device = devices[0];
-            remoteAddLink(device, query).then(function () {
-              console.info("[MyJD] CnL links added to device:", device.name);
-            }).catch(function (e) {
-              console.error("[MyJD] CnL add failed:", e);
-            });
-          });
-        } catch (e) {
-          console.error("[MyJD] sendCnlDirect error:", e);
         }
+        return devices[0];
       }
 
-      // Safari Click'n'Load: payload captured in the page by cnlPageHook.js
-      // (Safari has no blocking webRequest). Re-inject it into the exact same
-      // requestQueue + toolbar flow the original webRequest path used.
+      function readableCnlError(error) {
+        if (!error) return "Unknown MyJDownloader error";
+        if (typeof error === "string") return error;
+        if (error.type) return error.type;
+        if (error.responseText && error.responseText.type) return error.responseText.type;
+        try { return JSON.stringify(error); } catch (e) { return String(error); }
+      }
+
+      function sendCnlDirect(formData, sourceUrl) {
+        return $q(function (resolve, reject) {
+          try {
+            var generic = {};
+            Object.keys(formData).forEach(function (k) {
+              var v = formData[k];
+              generic[k] = ($.isArray(v) && v[0] !== undefined) ? v[0] : v;
+            });
+            var dummyUrl = "https://dummycnl.jdownloader.org/#" + encodeURIComponent(utf8ToHex(JSON.stringify(generic)));
+
+            var query = { links: dummyUrl, permission: true };
+            var src = generic.source || sourceUrl;
+            if (src) query.sourceUrl = src;
+            if (generic.package) query.packageName = generic.package;
+            if (generic.passwords) {
+              query.downloadPassword = $.isArray(generic.passwords) ? generic.passwords.join(" ") : generic.passwords;
+            }
+
+            // Do not use CACHED_DEVICE_LIST here. After Safari restores an API
+            // session that list may contain a valid device while jdapi's live
+            // device controller is still empty; the first add then fails with
+            // DEVICE_NOT_EXISTING. A live refresh both validates availability and
+            // populates the controller before the add request.
+            StorageService.get(StorageService.SETTINGS_DEFAULT_PREFERRED_JD, function (settingsResult) {
+              myjdClientFactory.get().getDeviceList().then(function (deviceResult) {
+                var devices = deviceResult && deviceResult.result;
+                var preferred = settingsResult && settingsResult[StorageService.SETTINGS_DEFAULT_PREFERRED_JD];
+                var device = selectCnlDevice(devices, preferred);
+                if (!device) {
+                  reject("NO_CONNECTED_DEVICE");
+                  return;
+                }
+                remoteAddLink(device, query).then(function (response) {
+                  console.info("[MyJD] CnL links accepted by device:", device.name);
+                  resolve({ deviceName: device.name, response: response });
+                }).catch(reject);
+              }).catch(reject);
+            });
+          } catch (e) {
+            reject(e);
+          }
+        }).catch(function (error) {
+          console.error("[MyJD] CnL add failed:", error);
+          return $q.reject(readableCnlError(error));
+        });
+      }
+
+      function validCnlCapture(data) {
+        try {
+          var url = new URL(data.cnlUrl);
+          if (url.protocol !== "http:" || url.username || url.password || url.port !== "9666" ||
+              (url.hostname !== "127.0.0.1" && url.hostname !== "localhost") ||
+              !/^\/flash\/add(?:crypted2?)?\/?$/.test(url.pathname)) return false;
+          var form = data.formData;
+          if (!form || Array.isArray(form) || typeof form !== "object") return false;
+          var keys = Object.keys(form);
+          if (!keys.length || keys.length > 64 || JSON.stringify(form).length > 2 * 1024 * 1024) return false;
+          return keys.every(function (key) {
+            return key !== "__proto__" && key !== "constructor" && key !== "prototype" && typeof form[key] === "string";
+          }) && (typeof form.urls === "string" || typeof form.links === "string" ||
+            (typeof form.crypted === "string" && (typeof form.jk === "string" || typeof form.key === "string")));
+        } catch (e) { return false; }
+      }
+
+      // Safari Click'n'Load: the page hook forwards to the live device directly.
+      // Resolve only after addLinks completes; no popup lifetime dependency.
       ExtensionMessagingService.addListener("myjd-cnl-capture", "captured", function (request, sender, sendResponse) {
         try {
-          if (request.data && request.data.formData && sender && sender.tab && sender.tab.id !== undefined) {
+          if (request.data && validCnlCapture(request.data) && sender && sender.tab && sender.tab.id !== undefined) {
             var formData = request.data.formData;
-            var sourceUrl = request.data.url || (sender.tab && sender.tab.url) || "";
+            var sourceUrl = sender.url || sender.tab.url || "";
 
             // The CnL POST happens inside filecrypt's helper popup, which
             // self-closes after ~3s. Safari does not expose openerTabId for it,
@@ -513,8 +583,11 @@ angular.module('myjdWebextensionApp')
             // closing popup. Instead we build the dummycnl link and add it
             // directly to the connected device over the https cloud API — no
             // toolbar, no countdown, no tab dependency.
-            sendCnlDirect(formData, sourceUrl);
-            sendResponse({});
+            sendCnlDirect(formData, sourceUrl).then(function (result) {
+              sendResponse({ data: result });
+            }).catch(function (error) {
+              sendResponse({ error: readableCnlError(error) });
+            });
           } else {
             sendResponse({ error: "Invalid request" });
           }
@@ -583,6 +656,7 @@ angular.module('myjdWebextensionApp')
       ExtensionMessagingService.addListener("myjd-toolbar", "login", function (request, sender, sendResponse) {
         if (request.data && request.data.credentials) {
           myjdClientFactory.get().connect(request.data.credentials).then(function () {
+            clearLoginDraft();
             console.info("[MyJD] login connect SUCCESS");
             sendResponse({ data: true });
             ExtensionMessagingService.sendMessage("myjd-toolbar", "session-change", {
@@ -1131,7 +1205,7 @@ angular.module('myjdWebextensionApp')
       function remoteAddLink(device, addLinksQuery) {
         return $q(function (resolve, reject) {
           myjdDeviceClientFactory.get(device).sendRequest("/linkgrabberv2/addLinks", JSON.stringify(addLinksQuery)).done(function (response) {
-            resolve();
+            resolve(response);
           }).fail(function (e) {
             reject(e);
           });

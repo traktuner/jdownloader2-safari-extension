@@ -9,8 +9,8 @@
  *   2. captures the Click'n'Load payload (crypted, jk, source, ...) from the
  *      fetch / XHR / form submit the page makes to 127.0.0.1:9666 and posts it
  *      back to this content script, which relays it to the background. The
- *      background feeds it into the normal requestQueue + toolbar + addLinks
- *      pipeline (sent to JDownloader over the https MyJDownloader cloud API).
+ *      background refreshes the live device list and calls addLinks through
+ *      the HTTPS MyJDownloader cloud API, then acknowledges the actual result.
  *
  * The hook is injected INLINE and synchronously at document_start so it runs
  * before any page script (e.g. filecrypt's helper.html which sets
@@ -80,10 +80,12 @@
     } catch (e) {}
 
     function isCnlUrl(url) {
-      if (!url) return false;
-      url = String(url);
-      return (url.indexOf("127.0.0.1:9666/flash/add") !== -1) ||
-             (url.indexOf("localhost:9666/flash/add") !== -1);
+      try {
+        var parsed = new URL(String(url), location.href);
+        return parsed.protocol === "http:" && !parsed.username && !parsed.password &&
+          (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost") &&
+          parsed.port === "9666" && /^\/flash\/add(?:crypted2?)?\/?$/.test(parsed.pathname);
+      } catch (e) { return false; }
     }
     function isCrypted(url) { return String(url).indexOf("/flash/addcrypted") !== -1; }
 
@@ -104,24 +106,44 @@
       return out;
     }
     function formToObject(form) {
-      var out = {};
-      try {
-        var els = form.elements;
-        for (var i = 0; i < els.length; i++) {
-          if (els[i] && els[i].name) out[els[i].name] = els[i].value;
-        }
-      } catch (e) {}
-      return out;
+      // FormData follows browser rules for disabled and unchecked controls.
+      return bodyToObject(new FormData(form));
     }
+    var nextRequestId = 1;
+    var pendingRequests = {};
+
+    window.addEventListener("message", function (ev) {
+      if (ev.source !== window) return;
+      var d = ev.data;
+      if (!d || d.__myjd !== "myjd-cnl-result" || !d.requestId) return;
+      var pending = pendingRequests[d.requestId];
+      if (!pending) return;
+      delete pendingRequests[d.requestId];
+      clearTimeout(pending.timeout);
+      if (d.ok) pending.resolve(d);
+      else pending.reject(new Error(d.error || "MyJDownloader rejected the request"));
+    }, false);
+
     function send(url, formData) {
-      if (!formData || Object.keys(formData).length === 0) return;
-      try {
+      if (!formData || Object.keys(formData).length === 0) {
+        return Promise.reject(new Error("Empty Click'n'Load payload"));
+      }
+      return new Promise(function (resolve, reject) {
+        var requestId = "cnl-" + Date.now() + "-" + (nextRequestId++);
+        pendingRequests[requestId] = {
+          resolve: resolve,
+          reject: reject,
+          timeout: setTimeout(function () {
+            delete pendingRequests[requestId];
+            reject(new Error("MyJDownloader request timed out"));
+          }, 20000)
+        };
         window.postMessage({
-          __myjd: MARKER, url: location.href, cnlUrl: String(url),
+          __myjd: MARKER, requestId: requestId, url: location.href, cnlUrl: new URL(String(url), location.href).href,
           crypted: isCrypted(url), formData: formData
         }, "*");
         console.info(TAG, "captured Click'n'Load payload:", Object.keys(formData).join(", "));
-      } catch (e) {}
+      });
     }
 
     // fetch
@@ -129,10 +151,15 @@
     if (origFetch) {
       window.fetch = function (input, init) {
         try {
-          var url = (typeof input === "string") ? input : (input && input.url);
+          var url = (typeof input === "string" || input instanceof URL) ? String(input) : (input && input.url);
           if (isCnlUrl(url)) {
-            send(url, bodyToObject((init && init.body) || (input && input.body)));
-            return Promise.resolve(new Response("success", { status: 200 }));
+            var body = init && init.body !== undefined ? Promise.resolve(init.body) :
+              (typeof Request !== "undefined" && input instanceof Request ?
+                (/^multipart\/form-data/i.test(input.headers.get("content-type") || "") ? input.clone().formData() : input.clone().text()) :
+                Promise.resolve(null));
+            return body.then(function (value) { return send(url, bodyToObject(value)); })
+              .then(function () { return new Response("success", { status: 200 }); })
+              .catch(function (error) { return new Response("error: " + error.message, { status: 502 }); });
           }
         } catch (e) {}
         return origFetch.apply(this, arguments);
@@ -149,20 +176,27 @@
       };
       XHR.prototype.send = function (body) {
         if (this.__myjdIsCnl) {
-          send(this.__myjdUrl, bodyToObject(body));
           var xhr = this;
+          var completed = false, responseStatus = 0, responseBody = "";
           try {
-            Object.defineProperty(xhr, "readyState", { configurable: true, get: function () { return 4; } });
-            Object.defineProperty(xhr, "status", { configurable: true, get: function () { return 200; } });
-            Object.defineProperty(xhr, "responseText", { configurable: true, get: function () { return "success"; } });
-            Object.defineProperty(xhr, "response", { configurable: true, get: function () { return "success"; } });
+            Object.defineProperty(xhr, "readyState", { configurable: true, get: function () { return completed ? 4 : 1; } });
+            Object.defineProperty(xhr, "status", { configurable: true, get: function () { return responseStatus; } });
+            Object.defineProperty(xhr, "responseText", { configurable: true, get: function () { return responseBody; } });
+            Object.defineProperty(xhr, "response", { configurable: true, get: function () { return responseBody; } });
           } catch (e) {}
-          setTimeout(function () {
-            try { if (typeof xhr.onreadystatechange === "function") xhr.onreadystatechange(); } catch (e) {}
+          var finish = function (ok, error) {
+            completed = true;
+            responseStatus = ok ? 200 : 502;
+            responseBody = ok ? "success" : "error: " + ((error && error.message) || error || "unknown error");
             try { xhr.dispatchEvent(new Event("readystatechange")); } catch (e) {}
             try { xhr.dispatchEvent(new Event("load")); } catch (e) {}
             try { xhr.dispatchEvent(new Event("loadend")); } catch (e) {}
-          }, 0);
+          };
+          send(this.__myjdUrl, bodyToObject(body)).then(function () {
+            finish(true);
+          }).catch(function (error) {
+            finish(false, error);
+          });
           return;
         }
         return origSend.apply(this, arguments);
@@ -170,9 +204,25 @@
     }
 
     // form submit (programmatic .submit() and submit events)
+    function showFormResult(ok, error) {
+      var message = ok ? "success" : "MyJDownloader error: " + ((error && error.message) || error || "unknown error");
+      try {
+        document.open();
+        document.write("<!doctype html><meta charset=\"utf-8\"><title>MyJDownloader</title><pre style=\"font:16px system-ui;padding:24px;white-space:pre-wrap\"></pre>");
+        document.close();
+        document.querySelector("pre").textContent = message;
+      } catch (e) {}
+    }
     function handleForm(form) {
       try {
-        if (form && isCnlUrl(form.action)) { send(form.action, formToObject(form)); return true; }
+        if (form && isCnlUrl(form.action)) {
+          send(form.action, formToObject(form)).then(function () {
+            showFormResult(true);
+          }).catch(function (error) {
+            showFormResult(false, error);
+          });
+          return true;
+        }
       } catch (e) {}
       return false;
     }
@@ -191,7 +241,12 @@
     if (navigator && navigator.sendBeacon) {
       var origBeacon = navigator.sendBeacon.bind(navigator);
       navigator.sendBeacon = function (url, data) {
-        if (isCnlUrl(url)) { send(url, bodyToObject(data)); return true; }
+        if (isCnlUrl(url)) {
+          send(url, bodyToObject(data)).catch(function (error) {
+            console.error(TAG, error);
+          });
+          return true;
+        }
         return origBeacon(url, data);
       };
     }
@@ -213,15 +268,24 @@
   window.addEventListener("message", function (ev) {
     if (ev.source !== window) return;
     var d = ev.data;
-    if (!d || d.__myjd !== "myjd-cnl-capture" || !d.formData) return;
+    if (!d || d.__myjd !== "myjd-cnl-capture" || !d.formData || typeof d.requestId !== "string") return;
     try {
       chrome.runtime.sendMessage({
         name: "myjd-cnl-capture",
         action: "captured",
-        data: { url: d.url, cnlUrl: d.cnlUrl, crypted: d.crypted, formData: d.formData }
+        data: { url: location.href, cnlUrl: d.cnlUrl, crypted: d.crypted, formData: d.formData }
+      }, function (response) {
+        var runtimeError = chrome.runtime.lastError && chrome.runtime.lastError.message;
+        window.postMessage({
+          __myjd: "myjd-cnl-result",
+          requestId: d.requestId,
+          ok: !runtimeError && response !== undefined && response.error === undefined,
+          error: runtimeError || (response && response.error) || (response === undefined ? "No response from MyJDownloader" : undefined)
+        }, "*");
       });
     } catch (e) {
-      console.error("[MyJD-CnL] relay to background failed:", e);
+      window.postMessage({__myjd: "myjd-cnl-result", requestId: d.requestId, ok: false,
+        error: "Could not contact the MyJDownloader extension"}, "*");
     }
   }, false);
 })();

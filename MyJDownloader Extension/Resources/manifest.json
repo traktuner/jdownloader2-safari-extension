@@ -1,6 +1,4 @@
 {
-"update_url": "https://clients2.google.com/service/update2/crx",
-
   "description": "__MSG_extensionDescription__",
   "manifest_version": 2,
   "name": "__MSG_extensionName__",
@@ -16,7 +14,6 @@
     "tabs",
     "storage",
     "webRequest",
-    "webRequestBlocking",
     "contextMenus",
     "<all_urls>"
   ],
@@ -122,8 +119,7 @@
       "all_frames": true,
       "matches": [
         "http://my.jdownloader.org/*",
-        "https://my.jdownloader.org/*",
-        "http://my.jdownloader.org/*"
+        "https://my.jdownloader.org/*"
       ]
     }
   ],

@@ -84,6 +84,12 @@ angular.module('myjdWebextensionApp')
             });
         }
 
+        this.getLoginDraft = function () {
+            return ExtensionMessagingService.sendMessage("myjd-login-draft", "get");
+        };
+        this.setLoginDraft = function (draft) {
+            return ExtensionMessagingService.sendMessage("myjd-login-draft", "set", draft);
+        };
         this.getDevices = getDevices;
         this.addLink = addLink;
         this.addCnl = addCnl;

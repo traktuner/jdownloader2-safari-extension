@@ -526,8 +526,8 @@ define("coreCore", ["coreCrypto", "coreCryptoUtils", "coreRequest", "coreRequest
     if (window && window.location && window.location.protocol) {
         if (window.location.protocol === "https:" || window.location.protocol === "http:") {
             API_ROOT = window.location.protocol + "//api.jdownloader.org";
-        } else if (window.location.protocol === "chrome-extension:" || window.location.protocol === "moz-extension:" || window.location.protocol === "ms-browser-extension:" || window.location.protocol === "safari-web-extension:") {
-            // default to https
+        } else if (window.location.protocol === "chrome-extension:" || window.location.protocol === "moz-extension:" || window.location.protocol === "ms-browser-extension:" || window.location.protocol === "safari-web-extension:" || window.location.protocol === "file:") {
+            // default to https for browser extensions and local file:// contexts (e.g., WKWebView)
             API_ROOT = "https://api.jdownloader.org"
         } else {
             throw new Error("MyJDownloader JS API: Unknown host protocol " + window.location.protocol);

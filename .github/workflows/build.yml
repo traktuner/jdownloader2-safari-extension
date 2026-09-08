@@ -1,19 +1,20 @@
 name: Build
 
 on:
+  pull_request:
   push:
     branches: [main]
     tags: ["v*"]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Select latest Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -23,43 +24,53 @@ jobs:
       - name: Xcode version
         run: xcodebuild -version
 
-      # CI builds ad-hoc signed (no Apple certificate). The Homebrew cask
-      # re-signs the .app locally with the user's "Apple Development" identity
-      # and clears quarantine in its postflight, so Safari loads the extension
-      # without "Allow Unsigned Extensions".
+      - name: Extension regression tests
+        run: node --test tests/extension.test.cjs
+
+      # A certificate-free universal build is the default for personal use.
+      # Safari requires the user's explicit "Allow Unsigned Extensions" setting.
       - name: Build (ad-hoc signed)
+        env:
+          RELEASE_REF: ${{ github.ref_name }}
         run: |
           set -o pipefail
-          xcodebuild \
-            -project MyJDownloader.xcodeproj \
-            -scheme "MyJDownloader" \
-            -configuration Release \
-            -derivedDataPath build \
-            CODE_SIGN_IDENTITY="-" \
-            CODE_SIGN_STYLE=Manual \
-            DEVELOPMENT_TEAM="" \
-            PROVISIONING_PROFILE_SPECIFIER=""
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            export MYJD_VERSION="${RELEASE_REF#v}"
+          fi
+          bash scripts/build.sh
 
       - name: Package
         id: package
         run: |
           APP="build/Build/Products/Release/MyJDownloader.app"
+          codesign --verify --deep --strict --verbose=2 "$APP"
           ditto -c -k --keepParent "$APP" MyJDownloader.zip
           echo "sha256=$(shasum -a 256 MyJDownloader.zip | awk '{print $1}')" >> "$GITHUB_OUTPUT"
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: MyJDownloader
           path: MyJDownloader.zip
 
-      # Public release asset → version-stable URL the Homebrew cask points at,
-      # and which the tap's livecheck/autobump can detect and bump.
-      - name: Create release (on tag)
-        if: startsWith(github.ref, 'refs/tags/')
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: MyJDownloader
+
+      # Only the tag-triggered publishing job needs repository write access.
+      - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
+          SHA256=$(sha256sum MyJDownloader.zip | awk '{print $1}')
           gh release create "$GITHUB_REF_NAME" MyJDownloader.zip \
             --title "$GITHUB_REF_NAME" \
-            --notes "Automated build. SHA256: \`${{ steps.package.outputs.sha256 }}\`"
+            --notes "Universal personal-use build (ad-hoc signed). See README for Safari setup. SHA256: \`$SHA256\`"

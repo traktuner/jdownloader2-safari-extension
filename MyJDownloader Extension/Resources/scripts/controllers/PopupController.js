@@ -12,7 +12,8 @@ angular.module('myjdWebextensionApp')
     .controller('PopupCtrl', ['$rootScope', '$scope', '$http', '$timeout', 'BackgroundScriptService', 'ApiErrorService', function ($rootScope, $scope, $http, $timeout, BackgroundScriptService, ApiErrorService) {
         var loadBuildMeta = function () {
             var buildMetaReq = new XMLHttpRequest();
-            buildMetaReq.open("GET", chrome.runtime.getURL('../../buildMeta.json'));
+            buildMetaReq.open("GET", chrome.runtime.getURL("buildMeta.json"));
+            buildMetaReq.responseType = "json";
             if (buildMetaReq.overrideMimeType) {
                 buildMetaReq.overrideMimeType("application/json");
             }
@@ -34,6 +35,40 @@ angular.module('myjdWebextensionApp')
         $scope.credentials = {email: undefined, password: undefined};
         $scope.state.isInitializing = true;
 
+        // Keep an unfinished login only in the background page's memory.
+        // It expires after five minutes even when the popup is never reopened.
+        var restoringDraft = true;
+        BackgroundScriptService.getLoginDraft().then(function (result) {
+            var draft = result && result.data;
+            if (draft && !$scope.state.isLoggedIn) {
+                // Never replace input typed while the asynchronous restore ran.
+                if (!$scope.credentials.email && !$scope.credentials.password) {
+                    $scope.credentials.email = draft.email;
+                    $scope.credentials.password = draft.password;
+                }
+            }
+        }).finally(function () {
+            restoringDraft = false;
+            // A user may already have typed while the restore was in flight.
+            // Save that input even if no later keystroke triggers the watcher.
+            if (!$scope.state.isLoggedIn && ($scope.credentials.email || $scope.credentials.password)) {
+                BackgroundScriptService.setLoginDraft({
+                    email: $scope.credentials.email || "", password: $scope.credentials.password || ""
+                });
+            }
+        });
+
+        $scope.$watchGroup(['credentials.email', 'credentials.password'], function (vals) {
+            if (restoringDraft || $scope.state.isLoggedIn) return;
+            BackgroundScriptService.setLoginDraft({email: vals[0] || "", password: vals[1] || ""});
+        });
+        $scope.$watch('state.isLoggedIn', function (loggedIn) {
+            if (loggedIn) {
+                BackgroundScriptService.setLoginDraft(null);
+                $scope.credentials.password = undefined;
+            }
+        });
+
         BackgroundScriptService.getSessionInfo().then(function (result) {
             $timeout(function () {
                 $scope.state.isConnecting = false;
@@ -48,6 +83,7 @@ angular.module('myjdWebextensionApp')
         }).catch(function () {
             $timeout(function () {
                 $scope.state.isConnecting = false;
+                $scope.state.isInitializing = false;
                 $scope.state.loading = false;
                 $scope.state.isLoggedIn = false;
             }, 0);
@@ -127,6 +163,9 @@ angular.module('myjdWebextensionApp')
                     }, 0);
                 }, function (error) {
                     $timeout(function () {
+                        $scope.state.isConnecting = false;
+                        $scope.state.isInitializing = false;
+                        $scope.state.loading = false;
                         var readableError = ApiErrorService.createReadableApiError(error);
                         if (readableError) {
                             $scope.state.error = readableError;
