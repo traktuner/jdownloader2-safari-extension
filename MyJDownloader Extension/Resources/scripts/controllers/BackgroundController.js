@@ -529,12 +529,17 @@ angular.module('myjdWebextensionApp')
 
       ExtensionMessagingService.addListener("myjd-toolbar", "logout", function (request, sender, sendResponse) {
         StorageService.clear();
-        StorageService.set(NATIVE_LOGIN_SUPPRESSED, true);
+        // MyjdService.disconnect() clears storage again when it settles, so
+        // the suppression flag is written afterwards; otherwise the shared
+        // login would sign the extension straight back in.
+        var suppressSharedLogin = function () { StorageService.set(NATIVE_LOGIN_SUPPRESSED, true); };
         myjdClientFactory.get().disconnect().then(function () {
+          suppressSharedLogin();
           sendResponse({ data: true });
           ExtensionMessagingService.sendMessage("myjd-toolbar", "session-change", { isLoggedIn: false });
           initDisconnected();
         }, function (error) {
+          suppressSharedLogin();
           sendResponse({ data: false, error: error });
           ExtensionMessagingService.sendMessage("myjd-toolbar", "session-change", { isLoggedIn: false });
           initDisconnected();
@@ -1285,9 +1290,12 @@ angular.module('myjdWebextensionApp')
       let addRc2Interceptor = function () {
         if (!chrome.webRequest.onBeforeRequest.hasListener(Rc2Service.handleRequest)) {
           chrome.webRequest.onBeforeRequest.removeListener(Rc2Service.handleRequest);
+          // handleRequest only acts on JDownloader's local captcha pages. In
+          // Safari it runs as an observer, so a narrow filter keeps it off
+          // every other request in the browser.
           safeAddWebRequestListener(chrome.webRequest.onBeforeRequest,
             Rc2Service.handleRequest, {
-            urls: ["<all_urls>"]
+            urls: ["http://127.0.0.1/*"]
           }, ["requestBody", "blocking"]);
         }
       };

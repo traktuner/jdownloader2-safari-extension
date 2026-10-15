@@ -117,6 +117,7 @@ final class JDClient: NSObject, ObservableObject {
     @Published private(set) var lastClickNLoad: String?
     private let clickNLoadServer = ClickNLoadServer()
     private var panelsShowingStatus = 0
+    private var lastPanelLoginAttempt: Date?
 
     private var webView: WKWebView!
     private var ready = false
@@ -287,7 +288,13 @@ final class JDClient: NSObject, ObservableObject {
     func statusPanel(visible: Bool) {
         // A login made in the Safari extension is stored in the shared item;
         // pick it up when the user looks at the app.
-        if visible && !connected && !connecting { tryConnectFromKeychain() }
+        // At most one attempt per minute: with a wrong saved password every
+        // panel open would otherwise read the keychain and fail a login again.
+        if visible && !connected && !connecting,
+           lastPanelLoginAttempt.map({ Date().timeIntervalSince($0) > 60 }) ?? true {
+            lastPanelLoginAttempt = Date()
+            tryConnectFromKeychain()
+        }
         panelsShowingStatus = max(0, panelsShowingStatus + (visible ? 1 : -1))
         pollTask?.cancel()
         pollTask = nil
