@@ -495,13 +495,24 @@ angular.module('myjdWebextensionApp')
           });
         });
       }
-      ExtensionMessagingService.addListener("myjd-update", "check", function (request, sender, sendResponse) {
+      // Computed in the background (startup, then every 6 h). Opening the
+      // popup only reads the cached result: no native call, no network.
+      var updateStatus = null;
+      var updateCheckRunning = false;
+      function refreshUpdateStatus() {
+        if (updateCheckRunning) return;
+        updateCheckRunning = true;
         $q.all([sendNative({ action: "app-version" }), latestRelease()]).then(function (results) {
           var current = results[0].version, latest = results[1];
-          sendResponse({ data: { current: current, latest: latest, updateAvailable: isNewerVersion(latest, current) } });
+          updateStatus = { current: current, latest: latest, updateAvailable: isNewerVersion(latest, current), checkedAt: Date.now() };
         }).catch(function (error) {
-          sendResponse({ error: "" + error });
-        });
+          console.warn("[MyJD] update check failed:", error);
+        }).finally(function () { updateCheckRunning = false; });
+      }
+      setInterval(refreshUpdateStatus, 6 * 60 * 60 * 1000);
+      ExtensionMessagingService.addListener("myjd-update", "check", function (request, sender, sendResponse) {
+        sendResponse({ data: updateStatus || { updateAvailable: false } });
+        if (!updateStatus || Date.now() - updateStatus.checkedAt > 6 * 60 * 60 * 1000) refreshUpdateStatus();
       });
 
       ExtensionMessagingService.addListener("myjd-toolbar", "session-info", function (request, sender, sendResponse) {
@@ -1365,6 +1376,7 @@ angular.module('myjdWebextensionApp')
 
       let init = function () {
         injectContentScripts();
+        refreshUpdateStatus();
         const myJDClient = myjdClientFactory.get();
         if (myJDClient) {
           myJDClient.connect().then(function () {
