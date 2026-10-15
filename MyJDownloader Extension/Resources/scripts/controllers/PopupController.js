@@ -10,25 +10,19 @@
 
 angular.module('myjdWebextensionApp')
     .controller('PopupCtrl', ['$rootScope', '$scope', '$http', '$timeout', 'BackgroundScriptService', 'ApiErrorService', function ($rootScope, $scope, $http, $timeout, BackgroundScriptService, ApiErrorService) {
-        var loadBuildMeta = function () {
-            var buildMetaReq = new XMLHttpRequest();
-            buildMetaReq.open("GET", chrome.runtime.getURL("buildMeta.json"));
-            buildMetaReq.responseType = "json";
-            if (buildMetaReq.overrideMimeType) {
-                buildMetaReq.overrideMimeType("application/json");
+        // Shows a notice only when GitHub has a newer release than the
+        // installed app (see BackgroundController "myjd-update").
+        BackgroundScriptService.checkForUpdate().then(function (result) {
+            if (result && result.data && result.data.updateAvailable) {
+                $timeout(function () { $scope.updateVersion = result.data.latest; }, 0);
             }
-            buildMetaReq.addEventListener('load', function (event) {
-                if (buildMetaReq.status >= 200 && buildMetaReq.status < 300) {
-                    $timeout(function () {
-                        $scope.isOutdatedVersion = (new Date().getTime() - buildMetaReq.response.timestamp) > (1000 * 60 * 60 * 24 * 90);
-                    }, 0);
-                } else {
-                    console.error(buildMetaReq.statusText, buildMetaReq.responseText);
-                }
-            });
-            buildMetaReq.send();
+        }).catch(function (error) {
+            console.warn("[MyJD] update check failed:", error);
+        });
+        $scope.openReleasePage = function () {
+            chrome.tabs.create({ url: "https://github.com/traktuner/jdownloader2-safari-extension/releases/latest" });
+            window.close();
         };
-        loadBuildMeta();
 
         resetScope();
         $rootScope.bodyClass = "browserActionContainer";

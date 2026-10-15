@@ -465,6 +465,45 @@ angular.module('myjdWebextensionApp')
         return nativeLoginPending;
       }
 
+      // Update notice: compare the installed app version with the latest
+      // GitHub release instead of the upstream "older than 90 days" rule,
+      // whose 2021 build timestamp always reported an outdated extension.
+      var UPDATE_CHECK = "UPDATE_CHECK";
+      function isNewerVersion(latest, current) {
+        var a = String(latest).split(".").map(Number), b = String(current).split(".").map(Number);
+        for (var i = 0; i < Math.max(a.length, b.length); i++) {
+          var x = a[i] || 0, y = b[i] || 0;
+          if (isNaN(x) || isNaN(y)) return false;
+          if (x !== y) return x > y;
+        }
+        return false;
+      }
+      function latestRelease() {
+        return $q(function (resolve, reject) {
+          StorageService.get(UPDATE_CHECK, function (stored) {
+            var cached = stored && stored[UPDATE_CHECK];
+            if (cached && cached.latest && Date.now() - cached.checkedAt < 6 * 60 * 60 * 1000) { resolve(cached.latest); return; }
+            fetch("https://api.github.com/repos/traktuner/jdownloader2-safari-extension/releases/latest", {
+              headers: { "Accept": "application/vnd.github+json" }
+            }).then(function (response) {
+              return response.ok ? response.json() : Promise.reject("GitHub HTTP " + response.status);
+            }).then(function (release) {
+              var latest = String(release.tag_name || "").replace(/^v/, "");
+              StorageService.set(UPDATE_CHECK, { latest: latest, checkedAt: Date.now() });
+              resolve(latest);
+            }).catch(reject);
+          });
+        });
+      }
+      ExtensionMessagingService.addListener("myjd-update", "check", function (request, sender, sendResponse) {
+        $q.all([sendNative({ action: "app-version" }), latestRelease()]).then(function (results) {
+          var current = results[0].version, latest = results[1];
+          sendResponse({ data: { current: current, latest: latest, updateAvailable: isNewerVersion(latest, current) } });
+        }).catch(function (error) {
+          sendResponse({ error: "" + error });
+        });
+      });
+
       ExtensionMessagingService.addListener("myjd-toolbar", "session-info", function (request, sender, sendResponse) {
         if (isApiLoggedIn()) {
           sendResponse({ data: { isLoggedIn: true } });

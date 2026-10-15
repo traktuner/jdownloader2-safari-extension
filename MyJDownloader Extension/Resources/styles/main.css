@@ -1178,6 +1178,11 @@ select {
     background-color: #22545c;
 }
 
+.outdatedMessage .updateNotice {
+    color: #fff;
+    text-decoration: underline;
+}
+
 .fillList {
     font-size: 64px;
     color: #89c4c6;

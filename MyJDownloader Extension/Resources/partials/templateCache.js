@@ -15,8 +15,8 @@ angular.module('myjdWebextensionApp').run(['$templateCache', function($templateC
     "    </div>\n" +
     "\n" +
     "    <div ng-show=\"state.isLoggedIn\" ng-cloak>\n" +
-    "        <div class=\"outdatedMessage\" ng-if=\"isOutdatedVersion\">\n" +
-    "            {{'ui_login_outdated_message' | translate}}\n" +
+    "        <div class=\"outdatedMessage\" ng-if=\"updateVersion\">\n" +
+    "            <a href=\"\" class=\"updateNotice\" ng-click=\"openReleasePage()\">{{'ui_login_outdated_message' | translate}} v{{updateVersion}}</a>\n" +
     "        </div>\n" +
     "        <my-connected-panel></my-connected-panel>\n" +
     "    </div>\n" +
@@ -48,8 +48,8 @@ angular.module('myjdWebextensionApp').run(['$templateCache', function($templateC
     "            <my-appstate state=\"state\"></my-appstate>\n" +
     "        </div>\n" +
     "        <div class=\"container\">\n" +
-    "            <div class=\"errorMessage\" ng-if=\"isOutdatedVersion\">\n" +
-    "                {{'ui_login_outdated_message' | translate}}\n" +
+    "            <div class=\"outdatedMessage\" ng-if=\"updateVersion\">\n" +
+    "                <a href=\"\" class=\"updateNotice\" ng-click=\"openReleasePage()\">{{'ui_login_outdated_message' | translate}} v{{updateVersion}}</a>\n" +
     "            </div>\n" +
     "            <form name=\"loginForm\" id=\"loginForm\" method=\"post\" autocomplete=\"on\" novalidate>\n" +
     "                <div>\n" +

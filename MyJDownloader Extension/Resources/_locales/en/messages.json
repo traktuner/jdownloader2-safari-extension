@@ -401,7 +401,7 @@
     "message": "Loading..."
   },
   "ui_login_outdated_message": {
-    "message": "You haven't updated the extension in a very long time. Please go to our homepage and check if there's an update available!"
+    "message": "Update available (brew upgrade --cask jdownloader2-safari):"
   },
   "ui_login_sorry_error": {
     "message": "Sorry, there was an error!"

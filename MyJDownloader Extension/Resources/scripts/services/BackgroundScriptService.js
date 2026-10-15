@@ -104,6 +104,9 @@ angular.module('myjdWebextensionApp')
         this.onDeviceListChanged = onDeviceListChanged;
         this.onDevicePoll = onDevicePoll;
         this.devicePoll = devicePoll;
+        this.checkForUpdate = function () {
+            return ExtensionMessagingService.sendMessage("myjd-update", "check");
+        };
         this.sendFeedback = sendFeedback;
         this.sendApiRequest = sendApiRequest;
     }]);

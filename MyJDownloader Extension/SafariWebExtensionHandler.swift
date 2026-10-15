@@ -34,6 +34,8 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
             let status = email.isEmpty || pass.isEmpty ? errSecParam : SharedCredentials.save(email: email, pass: pass)
             if status != errSecSuccess { os_log(.default, log: log, "Storing shared login failed: %{public}d", status) }
             reply = status == errSecSuccess ? ["ok": true] : ["error": "keychain \(status)"]
+        case "app-version":
+            reply = ["version": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""]
         default:
             reply = ["error": "unknown action"]
         }
