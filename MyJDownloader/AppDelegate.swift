@@ -186,7 +186,9 @@ final class JDClient: NSObject, ObservableObject {
                     // Automatic login already read these exact credentials.
                     // Writing them back can trigger an unnecessary second
                     // Keychain authorization request.
-                    if !automatically {
+                    // Exception: an item from an older version is rewritten once
+                    // so the Safari extension can share this login.
+                    if !automatically || !Keychain.isShared {
                         if let error = Keychain.save(email: email, pass: pass) {
                             self.lastError = error
                         } else {
@@ -247,6 +249,9 @@ final class JDClient: NSObject, ObservableObject {
     /// Status is polled only while a panel shows it; nothing runs in the
     /// background when the menu bar panel is closed.
     func statusPanel(visible: Bool) {
+        // A login made in the Safari extension is stored in the shared item;
+        // pick it up when the user looks at the app.
+        if visible && !connected && !connecting { tryConnectFromKeychain() }
         panelsShowingStatus = max(0, panelsShowingStatus + (visible ? 1 : -1))
         pollTask?.cancel()
         pollTask = nil
@@ -676,14 +681,36 @@ enum Keychain {
         }
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                    kSecAttrService as String: service, kSecAttrAccount as String: account]
-        var status = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
-        if status == errSecItemNotFound {
-            var attributes = query
-            attributes[kSecValueData as String] = data
-            attributes[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlocked
-            status = SecItemAdd(attributes as CFDictionary, nil)
-        }
+        // An item's access list cannot be changed by SecItemUpdate, so the
+        // item is recreated with one that also trusts the Safari extension.
+        SecItemDelete(query as CFDictionary)
+        var attributes = query
+        attributes[kSecValueData as String] = data
+        if let access = sharedAccess() { attributes[kSecAttrAccess as String] = access }
+        let status = SecItemAdd(attributes as CFDictionary, nil)
+        if status == errSecSuccess { UserDefaults.standard.set(true, forKey: sharedFlag) }
         return status == errSecSuccess ? nil : "Schlüsselbund: " + errorMessage(status)
+    }
+
+    /// True once the item carries the access list shared with the extension.
+    static var isShared: Bool { UserDefaults.standard.bool(forKey: sharedFlag) }
+    private static let sharedFlag = "keychainSharedWithExtension"
+
+    /// One login for app and extension: the extension's native handler reads
+    /// (and writes) this item, so both bundles must be on its access list.
+    private static func sharedAccess() -> SecAccess? {
+        let app = Bundle.main.bundleURL
+        let appex = app.appendingPathComponent("Contents/PlugIns/MyJDownloader Extension.appex")
+        var trusted: [SecTrustedApplication] = []
+        for url in [app, appex] {
+            var application: SecTrustedApplication?
+            if SecTrustedApplicationCreateFromPath(url.path, &application) == errSecSuccess, let application {
+                trusted.append(application)
+            }
+        }
+        var access: SecAccess?
+        guard SecAccessCreate("MyJDownloader" as CFString, trusted as CFArray, &access) == errSecSuccess else { return nil }
+        return access
     }
     private static func errorMessage(_ status: OSStatus) -> String {
         (SecCopyErrorMessageString(status, nil) as String?) ?? "Fehler \(status)"

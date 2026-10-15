@@ -407,17 +407,66 @@ angular.module('myjdWebextensionApp')
         }
       }
 
+      // One login for app and extension: the extension's native handler reads
+      // the menu bar app's keychain item (and stores a login made here), so
+      // the user never has to log in twice. An explicit logout in the
+      // extension suppresses this until the next manual login.
+      var NATIVE_LOGIN_SUPPRESSED = "NATIVE_LOGIN_SUPPRESSED";
+      var nativeLoginPending = null;
+
+      function sendNative(message) {
+        return $q(function (resolve, reject) {
+          try {
+            chrome.runtime.sendNativeMessage("application.id", message, function (response) {
+              if (chrome.runtime.lastError) { reject(chrome.runtime.lastError.message); return; }
+              if (!response || response.error) { reject((response && response.error) || "no response"); return; }
+              resolve(response);
+            });
+          } catch (e) { reject("" + e); }
+        });
+      }
+
+      function isApiLoggedIn() {
+        var client = myjdClientFactory.get();
+        var options = client && client.api && client.api.jdAPICore && client.api.jdAPICore.options;
+        return !!(options && options.sessiontoken && options.sessiontoken.length > 0);
+      }
+
+      function nativeLogin() {
+        if ($scope.state.isConnected && isApiLoggedIn()) return $q.resolve();
+        if (nativeLoginPending) return nativeLoginPending;
+        nativeLoginPending = $q(function (resolve, reject) {
+          StorageService.get(NATIVE_LOGIN_SUPPRESSED, function (stored) {
+            if (stored && stored[NATIVE_LOGIN_SUPPRESSED]) { reject("suppressed"); return; }
+            sendNative({ action: "get-credentials" }).then(function (credentials) {
+              return myjdClientFactory.get().connect({ email: credentials.email, password: credentials.password });
+            }).then(function () {
+              console.info("[MyJD] logged in with the app's account");
+              ExtensionMessagingService.sendMessage("myjd-toolbar", "session-change", { isLoggedIn: true });
+              injectContentScripts();
+              initSettings().then(initConnected);
+              resolve();
+            }).catch(reject);
+          });
+        }).finally(function () { nativeLoginPending = null; });
+        return nativeLoginPending;
+      }
+
       ExtensionMessagingService.addListener("myjd-toolbar", "session-info", function (request, sender, sendResponse) {
-        if (myjdClientFactory.get().api !== undefined && myjdClientFactory.get().api.jdAPICore !== undefined) {
-          let thisSession = myjdClientFactory.get().api.jdAPICore.options;
-          sendResponse({ data: { isLoggedIn: thisSession.sessiontoken !== undefined && thisSession.sessiontoken.length > 0 } });
-        } else {
-          sendResponse({ data: { isLoggedIn: false } });
+        if (isApiLoggedIn()) {
+          sendResponse({ data: { isLoggedIn: true } });
+          return;
         }
+        nativeLogin().then(function () {
+          sendResponse({ data: { isLoggedIn: true } });
+        }).catch(function () {
+          sendResponse({ data: { isLoggedIn: false } });
+        });
       });
 
       ExtensionMessagingService.addListener("myjd-toolbar", "logout", function (request, sender, sendResponse) {
         StorageService.clear();
+        StorageService.set(NATIVE_LOGIN_SUPPRESSED, true);
         myjdClientFactory.get().disconnect().then(function () {
           sendResponse({ data: true });
           ExtensionMessagingService.sendMessage("myjd-toolbar", "session-change", { isLoggedIn: false });
@@ -458,7 +507,11 @@ angular.module('myjdWebextensionApp')
 
       ExtensionMessagingService.addListener("myjd-toolbar", "add-link", function (request, sender, sendResponse) {
         if (request.data && request.data.query && request.data.device) {
-          remoteAddLink(request.data.device, request.data.query).then(function () {
+          // The dialog can be open while the session expired; log in with the
+          // shared account first instead of failing silently.
+          (isApiLoggedIn() ? $q.resolve() : nativeLogin()).then(function () {
+            return remoteAddLink(request.data.device, request.data.query);
+          }).then(function () {
             sendResponse({});
           }).catch(function (error) {
             sendResponse({ error: error });
@@ -610,8 +663,18 @@ angular.module('myjdWebextensionApp')
             var formData = request.data.formData;
             var sourceUrl = sender.url || sender.tab.url || "";
             StorageService.get(StorageService.SETTINGS_CLICKNLOAD_ACTIVE, function (stored) {
-              if (!$scope.state.isConnected || (stored && stored[StorageService.SETTINGS_CLICKNLOAD_ACTIVE] === false)) {
+              if (stored && stored[StorageService.SETTINGS_CLICKNLOAD_ACTIVE] === false) {
                 sendResponse({ passthrough: true });
+                return;
+              }
+              if (!$scope.state.isConnected) {
+                nativeLogin().then(function () {
+                  return sendCnlDirect(formData, sourceUrl);
+                }).then(function (result) {
+                  sendResponse({ data: result });
+                }).catch(function () {
+                  sendResponse({ passthrough: true });
+                });
                 return;
               }
               // The CnL POST often happens inside a helper popup that closes
@@ -693,6 +756,12 @@ angular.module('myjdWebextensionApp')
           myjdClientFactory.get().connect(request.data.credentials).then(function () {
             clearLoginDraft();
             console.info("[MyJD] login connect SUCCESS");
+            chrome.storage.local.remove(NATIVE_LOGIN_SUPPRESSED);
+            sendNative({
+              action: "store-credentials",
+              email: request.data.credentials.email,
+              password: request.data.credentials.password
+            }).catch(function (error) { console.warn("[MyJD] could not share login with the app:", error); });
             sendResponse({ data: true });
             ExtensionMessagingService.sendMessage("myjd-toolbar", "session-change", {
               isLoggedIn: true
@@ -1252,11 +1321,15 @@ angular.module('myjdWebextensionApp')
           }).catch(function (error) {
             console.log("MyJD Extension init [SESSION]", error);
             $scope.state.isConnected = false;
-            initSettings().then(initDisconnected);
+            initSettings().then(initDisconnected).then(function () {
+              nativeLogin().catch(function (reason) { console.info("[MyJD] no shared login:", reason); });
+            });
           });
         } else {
           $scope.state.isConnected = false;
-          initSettings().then(initDisconnected);
+          initSettings().then(initDisconnected).then(function () {
+            nativeLogin().catch(function (reason) { console.info("[MyJD] no shared login:", reason); });
+          });
         }
       };
 

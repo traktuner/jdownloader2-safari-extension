@@ -15,6 +15,7 @@
     "storage",
     "webRequest",
     "contextMenus",
+    "nativeMessaging",
     "<all_urls>"
   ],
   "background": {
