@@ -26,48 +26,47 @@ differently. The Safari-specific fixes:
 
 ## Install on a new Mac (personal Homebrew tap)
 
-Requirements: macOS 14 Sonoma or later, Safari and Homebrew. No Xcode, Apple
-account, development certificate or paid Apple membership is required to run the
-prebuilt app.
+Requirements: macOS 14 Sonoma or later, Safari and Homebrew. Releases from v1.2.0
+are signed with Developer ID and notarized by Apple, so no Xcode, certificate or
+Safari developer setting is needed on the Mac that installs them.
 
 ```sh
 brew install --cask traktuner/tap/jdownloader2-safari
 ```
 
-If an older installation was moved to the Trash, use `brew reinstall --cask
-traktuner/tap/jdownloader2-safari` after the updated cask and release are available.
+1. Open **MyJDownloader** from Applications and log in with your MyJDownloader
+   account. Enable **Start at login** if you want native Click'n'Load.
+2. In **Safari → Settings → Extensions**, enable MyJDownloader and allow it on
+   all websites (Click'n'Load, link capture and CAPTCHA integration need this).
+3. Log in through the Safari extension popup and select your JDownloader device.
 
-This personal build is **not notarized**. The cask checks the release checksum
-and bundle signature, signs the app and its embedded extension locally with an
-ad-hoc signature, verifies both, and removes quarantine **only from this app**.
-It never selects a certificate from your keychain or changes global Gatekeeper
-settings. Install this personal cask only if you trust this repository and tap.
-
-1. Open **MyJDownloader** from Applications.
-2. In **Safari → Settings → Advanced**, enable **Show features for web developers**.
-3. In **Safari → Settings → Developer**, enable **Allow unsigned extensions**.
-4. In **Safari → Settings → Extensions**, enable MyJDownloader and allow it on the
-   websites where you use Click'n'Load, link capture or CAPTCHA integration.
-5. Log in through the Safari extension popup and select your JDownloader device.
-
-Safari can require the unsigned-extension setting to be enabled again after
-quitting. Ad-hoc signing does not provide the trust of a Developer ID signature.
-For a download that avoids this developer setup, the publisher needs Developer
-ID signing and Apple notarization; users installing that release do not need an
-Apple subscription. The certificate-free build remains available for personal use.
-See Apple's [building and testing guide](https://developer.apple.com/documentation/safariservices/building-and-testing-a-safari-web-extension)
-and [distribution guide](https://developer.apple.com/documentation/safariservices/distributing-your-safari-web-extension).
+A notarized build keeps running after the signing certificate or the Apple
+membership expires. See Apple's [distribution guide](https://developer.apple.com/documentation/safariservices/distributing-your-safari-web-extension).
 
 ## Menu bar companion
 
-The menu bar app displays device speed and provides start, pause and stop
-controls. Its login is separate from Safari's login. Credentials saved by the
-native app use the macOS Keychain; unfinished Safari login input stays only in
-background-page memory for up to five minutes.
+The menu bar app shows the selected device's state (running, paused, stopped),
+speed, progress and remaining time, and provides start/resume, pause and stop.
+It polls the device only while its panel is open. Its login is separate from
+Safari's login. Credentials saved by the native app use the macOS Keychain;
+unfinished Safari login input stays only in background-page memory for up to
+five minutes.
 
-The container app does not need to remain open for adding links. Safari runs the
-extension background page and sends links to JDownloader through the MyJDownloader
-API. Keep the container app open only when using the menu bar controls.
+### Native Click'n'Load (127.0.0.1:9666)
+
+While it runs, the app answers Click'n'Load on `127.0.0.1:9666` like a local
+JDownloader (`/jdcheck.js`, `/crossdomain.xml`, `/flash/add`,
+`/flash/addcrypted2`, `/flash/addcrypted`) and sends the links to the device
+selected in the app. This covers what the extension's page hooks cannot see:
+`<script src>` detection, navigations, popups, frames and strict-CSP pages. The
+extension still handles captured requests first. When the extension is logged
+out or its Click'n'Load setting is off, it lets the original request through to
+this port. The port listens on loopback only. If a local JDownloader already
+uses port 9666, the app reports that and JDownloader handles Click'n'Load itself.
+
+Safari Click'n'Load sent by the extension applies the extension's default
+options (autostart, auto extract, priority, deep decrypt, packagizer) and its
+preferred device.
 
 ## Upstream baseline
 
@@ -80,7 +79,7 @@ v2; a third-party Chrome manifest-v3 rewrite is not treated as an official updat
 Matching the original extension does not mean these legacy libraries are the
 latest independently available versions.
 
-## Build without an Apple subscription
+## Build
 
 Building from source requires Xcode with the macOS SDK. The shared build script
 produces an ad-hoc-signed universal app for Apple silicon and Intel:
@@ -95,19 +94,32 @@ network volume. `MYJD_VERSION` overrides the default app version (three numeric
 components). The upstream browser-extension version in `buildMeta.json` is tracked
 separately from the Safari wrapper version.
 
-CI runs the same script for pull requests and pushes. Tags (`vX.Y.Z`) publish a
-ZIP on GitHub Releases. A release is not installed through Homebrew until the
-cask's version and SHA256 point to that exact ZIP.
+## Release (Developer ID + notarization)
+
+CI builds pull requests and `main` ad-hoc. A tag `vX.Y.Z` runs
+`scripts/release.sh` on GitHub Actions: Developer ID signature with secure
+timestamp, notarization through `notarytool`, stapling, and a GitHub Release
+with `MyJDownloader.zip`. The job summary prints the cask `version`/`sha256`.
+
+Repository secrets (same names as in encrypted-memories):
+
+| Secret | Content |
+| --- | --- |
+| `APPLE_SIGNING_CERTIFICATES_P12_BASE64` | base64 of the `.p12` export of the **Developer ID Application** certificate with its private key |
+| `APPLE_SIGNING_CERTIFICATES_PASSWORD` | password of that `.p12` |
+| `APP_STORE_CONNECT_ISSUER_ID` | App Store Connect API issuer ID |
+| `APP_STORE_CONNECT_KEY_ID` | API key ID (team key) |
+| `APP_STORE_CONNECT_PRIVATE_KEY_BASE64` | base64 of `AuthKey_<id>.p8` |
+
+An Apple Development or Apple Distribution certificate cannot replace the
+Developer ID Application certificate. A release reaches Homebrew users only
+after the cask's `version` and `sha256` point to that exact ZIP.
 
 Focused regression tests (Node.js, no packages to install):
 
 ```sh
 node --test tests/extension.test.cjs
 ```
-
-They exercise CnL routing/body capture/acknowledgments, popup draft isolation and
-expiry, and the native API handshake/logout contract. Real Safari login, CAPTCHA
-pages and link delivery still need a browser and an actual JDownloader device.
 
 ## Signing failure in older casks
 

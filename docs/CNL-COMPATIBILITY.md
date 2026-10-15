@@ -8,16 +8,27 @@ or downloads successfully.
 
 ## Original Chrome comparison
 
-On 2026-09-08 the official Chrome package could not be retrieved from the
-inspected Chrome Web Store/update endpoints. The update service returned no
-package, and no installed local original was found. Therefore an actual
-Chrome-versus-Safari source comparison was **not completed**. The previously
-inspected official Firefox 3.3.20 package is a separate browser target.
+The official Chrome package 3.3.20 (`update_url` clients2.google.com, Web Store
+`_metadata`) is unpacked next to this repository in `../../extension`, with the
+archive `../../myjd.crx`. The Safari resources were derived from it. The
+original intercepts Click'n'Load at network level with blocking `webRequest`:
+every request to `127.0.0.1:9666` or `localhost:9666` for `/jdcheck.js`,
+`/crossdomain.xml`, `/flash/add` and `/flash/addcrypted2`, from any transport,
+frame or popup. Support therefore never depended on a crypter list.
 
-[AppWork's explanation](https://support.jdownloader.org/en/knowledgebase/article/unable-to-install-myjdownloader-browser-extension-due-to-the-forced-switch-to-manifestv3)
-describes the original extension's Manifest V2 dependency and the limitations
-affecting a Chrome Manifest V3 replacement. No unofficial replacement is treated
-as the authoritative original.
+Safari has no blocking `webRequest`. Parity is reached in two layers:
+
+1. The extension's page hooks capture fetch/XHR/form/sendBeacon submissions and
+   send them through the MyJDownloader cloud API.
+2. The MyJDownloader app answers the same routes on `127.0.0.1:9666` like a
+   local JDownloader and catches every request that reaches the network. This
+   includes `<script src=".../jdcheck.js">`, navigations, popups, frames and
+   strict-CSP pages. The extension passes requests through to it while the
+   extension is logged out or its Click'n'Load setting is off.
+
+The native layer requires the app to run (Start at login) and to be logged in.
+In Safari the original blocking interceptor is not registered as an observer:
+as an observer it closed the cryptor tab and opened an empty toolbar.
 
 ## Development support matrix
 
@@ -36,10 +47,11 @@ that the installed v1.1.0 already contains them.
 | form.submit() | Page-world hook required because this API emits no submit event |
 | Alternative submit button action | Honors formaction and includes the submitter's name/value |
 | /jdcheck.js using fetch/XHR | Answers the standard detection response; no download is sent |
-| Parser/dynamic script loading of jdcheck.js | Global jdownloader compatibility hook only; script load/error behavior not guaranteed |
-| Strict CSP with script-only fetch/XHR submission | Legacy inline page hook can still be blocked; DOM form fallback does not solve all scripted submissions |
+| Parser/dynamic script loading of jdcheck.js | Answered by the app's native port; page hook additionally sets the jdownloader global |
+| Strict CSP with script-only fetch/XHR submission | Page hook can be blocked; the request then reaches the app's native port (if the page CSP allows 127.0.0.1) |
 | Helper frames | Manifest requests all frames; real site-specific frame/permission behavior still needs testing |
-| Legacy CNL1 /flash/addcrypted, DLC/CCF/RSDF files, custom APIs or URL schemes | No blanket compatibility claim |
+| Legacy CNL1 /flash/addcrypted (DLC) | Native port forwards it via linkgrabberv2/addContainer; not verified against a live site |
+| CCF/RSDF files, custom APIs or URL schemes | No blanket compatibility claim |
 | CAPTCHA solving and decrypted links | Separate JDownloader/site/browser acceptance required |
 
 The official [CNL2 documentation](https://jdownloader.org/knowledge/wiki/glossary/cnl2)

@@ -141,7 +141,9 @@
       if (!pending) return;
       delete pendingRequests[d.requestId];
       clearTimeout(pending.timeout);
-      if (d.ok) pending.resolve(d);
+      // passthrough: the extension cannot deliver (logged out or CnL disabled),
+      // so the caller performs the original request to the local port.
+      if (d.ok || d.passthrough) pending.resolve(d);
       else pending.reject(new Error(d.error || "MyJDownloader rejected the request"));
     }, false);
 
@@ -197,8 +199,12 @@
                 (typeof Request !== "undefined" && input instanceof Request ?
                   (/^multipart\/form-data/i.test(input.headers.get("content-type") || "") ? input.clone().formData() : input.clone().text()) :
                   Promise.resolve(null));
+              var self = this, args = arguments;
               return body.then(readBody).then(function (value) { return send(url, value); })
-                .then(function () { return new Response("success", { status: 200 }); })
+                .then(function (result) {
+                  if (result && result.passthrough) return origFetch.apply(self, args);
+                  return new Response("success", { status: 200 });
+                })
                 .catch(function (error) { return new Response("error: " + error.message, { status: 502 }); });
             }
           } catch (e) {}
@@ -235,7 +241,14 @@
             };
             var response = this.__myjdIsProbe ? Promise.resolve() :
               readBody(body).then(function (data) { return send(xhr.__myjdUrl, data); });
-            response.then(function () {
+            response.then(function (result) {
+              if (result && result.passthrough) {
+                ["readyState", "status", "responseText", "response"].forEach(function (key) {
+                  try { delete xhr[key]; } catch (e) {}
+                });
+                origSend.call(xhr, body);
+                return;
+              }
               finish(true);
             }).catch(function (error) {
               finish(false, error);
@@ -248,6 +261,21 @@
     }
 
     // form submit (programmatic .submit() and submit events)
+    var nativeSubmit = window.HTMLFormElement && HTMLFormElement.prototype.submit;
+    function submitToLocalPort(form, action, submitter) {
+      // form.submit() emits no submit event, so neither hook captures it again.
+      try {
+        if (submitter && submitter.name && !submitter.disabled) {
+          var extra = document.createElement("input");
+          extra.type = "hidden"; extra.name = submitter.name; extra.value = submitter.value;
+          form.appendChild(extra);
+        }
+        form.setAttribute("action", action);
+        nativeSubmit.call(form);
+      } catch (e) {
+        showFormResult(false, e);
+      }
+    }
     var statusElement;
     function showFormResult(ok, error) {
       var message = ok ? "An JDownloader gesendet." : "MyJDownloader: " + ((error && error.message) || error || "unknown error");
@@ -267,7 +295,8 @@
       try {
         var action = submitter && submitter.hasAttribute("formaction") ? submitter.formAction : form && form.action;
         if (form && isCnlUrl(action)) {
-          send(action, formToObject(form, submitter)).then(function () {
+          send(action, formToObject(form, submitter)).then(function (result) {
+            if (result && result.passthrough) { submitToLocalPort(form, action, submitter); return; }
             showFormResult(true);
           }).catch(function (error) {
             showFormResult(false, error);
@@ -298,7 +327,9 @@
       var origBeacon = navigator.sendBeacon.bind(navigator);
       navigator.sendBeacon = function (url, data) {
         if (isCnlUrl(url)) {
-          readBody(data).then(function (body) { return send(url, body); }).catch(function (error) {
+          readBody(data).then(function (body) { return send(url, body); }).then(function (result) {
+            if (result && result.passthrough) origBeacon(url, data);
+          }).catch(function (error) {
             console.error(TAG, error);
           });
           return true;
@@ -351,6 +382,7 @@
         window.postMessage({
           __myjd: "myjd-cnl-result",
           requestId: d.requestId,
+          passthrough: !runtimeError && !!(response && response.passthrough),
           ok: !runtimeError && response !== undefined && response.error === undefined,
           error: runtimeError || (response && response.error) || (response === undefined ? "No response from MyJDownloader" : undefined)
         }, "*");

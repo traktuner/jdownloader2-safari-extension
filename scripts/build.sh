@@ -4,10 +4,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD_DIR="${MYJD_BUILD_DIR:-$ROOT/build}"
-VERSION="${MYJD_VERSION:-1.1.0}"
+VERSION="${MYJD_VERSION:-1.2.0}"
 
 if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "MYJD_VERSION must contain three numeric components (for example 1.1.0)." >&2
+  echo "MYJD_VERSION must contain three numeric components (for example 1.2.0)." >&2
   exit 1
 fi
 

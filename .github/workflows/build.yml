@@ -11,7 +11,9 @@ permissions:
   contents: read
 
 jobs:
+  # Pull requests and main: certificate-free check build (no secrets needed).
   build:
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
@@ -21,41 +23,66 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      - name: Xcode version
-        run: xcodebuild -version
+      - name: Extension regression tests
+        run: node --test tests/extension.test.cjs
+
+      - name: Build (ad-hoc signed)
+        run: bash scripts/build.sh
+
+  # Tags vX.Y.Z: Developer ID signed, notarized and stapled release.
+  # Required repository secrets (same names as encrypted-memories):
+  #   APPLE_SIGNING_CERTIFICATES_P12_BASE64 / APPLE_SIGNING_CERTIFICATES_PASSWORD
+  #     -> P12 export of the "Developer ID Application" certificate + key
+  #   APP_STORE_CONNECT_ISSUER_ID / APP_STORE_CONNECT_KEY_ID /
+  #   APP_STORE_CONNECT_PRIVATE_KEY_BASE64 -> team API key used by notarytool
+  notarize:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Select latest Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
 
       - name: Extension regression tests
         run: node --test tests/extension.test.cjs
 
-      # A certificate-free universal build is the default for personal use.
-      # Safari requires the user's explicit "Allow Unsigned Extensions" setting.
-      - name: Build (ad-hoc signed)
+      - name: Import Developer ID certificate
+        uses: Apple-Actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7.0.0
+        with:
+          # The default signing_temp keychain gets an auto-generated password.
+          p12-file-base64: ${{ secrets.APPLE_SIGNING_CERTIFICATES_P12_BASE64 }}
+          p12-password: ${{ secrets.APPLE_SIGNING_CERTIFICATES_PASSWORD }}
+
+      - name: Build, sign and notarize
         env:
-          RELEASE_REF: ${{ github.ref_name }}
+          MYJD_VERSION: ${{ github.ref_name }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
         run: |
-          set -o pipefail
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            export MYJD_VERSION="${RELEASE_REF#v}"
-          fi
-          bash scripts/build.sh
+          set -euo pipefail
+          export MYJD_VERSION="${MYJD_VERSION#v}"
+          export APP_STORE_CONNECT_PRIVATE_KEY_PATH="$RUNNER_TEMP/AuthKey.p8"
+          printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" | base64 --decode > "$APP_STORE_CONNECT_PRIVATE_KEY_PATH"
+          chmod 600 "$APP_STORE_CONNECT_PRIVATE_KEY_PATH"
+          bash scripts/release.sh
+          rm -f "$APP_STORE_CONNECT_PRIVATE_KEY_PATH"
+          cp build/MyJDownloader.zip MyJDownloader.zip
 
-      - name: Package
-        id: package
-        run: |
-          APP="build/Build/Products/Release/MyJDownloader.app"
-          codesign --verify --deep --strict --verbose=2 "$APP"
-          ditto -c -k --keepParent "$APP" MyJDownloader.zip
-          echo "sha256=$(shasum -a 256 MyJDownloader.zip | awk '{print $1}')" >> "$GITHUB_OUTPUT"
-
-      - name: Upload build artifact
+      - name: Upload notarized artifact
         uses: actions/upload-artifact@v7
         with:
           name: MyJDownloader
           path: MyJDownloader.zip
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: notarize
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -73,4 +100,9 @@ jobs:
           SHA256=$(sha256sum MyJDownloader.zip | awk '{print $1}')
           gh release create "$GITHUB_REF_NAME" MyJDownloader.zip \
             --title "$GITHUB_REF_NAME" \
-            --notes "Universal personal-use build (ad-hoc signed). See README for Safari setup. SHA256: \`$SHA256\`"
+            --notes "Universal build, Developer ID signed and notarized by Apple. Install: \`brew install --cask traktuner/tap/jdownloader2-safari\`. SHA256: \`$SHA256\`"
+          {
+            echo "## Homebrew cask"
+            echo "version \"${GITHUB_REF_NAME#v}\""
+            echo "sha256 \"$SHA256\""
+          } >> "$GITHUB_STEP_SUMMARY"

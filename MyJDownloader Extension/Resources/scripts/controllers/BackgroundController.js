@@ -505,6 +505,25 @@ angular.module('myjdWebextensionApp')
         try { return JSON.stringify(error); } catch (e) { return String(error); }
       }
 
+      // Click'n'Load bypasses the add-links dialog, so apply the defaults the
+      // user configured in the extension settings ("unset" leaves JDownloader's
+      // own default in place).
+      function applyCnlDefaults(query, settings) {
+        var flags = [
+          [StorageService.SETTINGS_DEFAULT_AUTOSTART, "autostart"],
+          [StorageService.SETTINGS_DEFAULT_AUTOEXTRACT, "autoExtract"],
+          [StorageService.SETTINGS_DEFAULT_DEEPDECRYPT, "deepDecrypt"],
+          [StorageService.SETTINGS_DEFAULT_OVERWRITE_PACKAGIZER, "overwritePackagizerRules"]
+        ];
+        flags.forEach(function (flag) {
+          var value = settings[flag[0]];
+          if (value === true || value === "true") query[flag[1]] = true;
+          else if (value === false || value === "false") query[flag[1]] = false;
+        });
+        var priority = settings[StorageService.SETTINGS_DEFAULT_PRIORITY];
+        if (priority && priority.value && priority.value !== "UNSET") query.priority = priority.value;
+      }
+
       function sendCnlDirect(formData, sourceUrl) {
         return $q(function (resolve, reject) {
           try {
@@ -515,7 +534,10 @@ angular.module('myjdWebextensionApp')
             });
             var dummyUrl = "https://dummycnl.jdownloader.org/#" + encodeURIComponent(utf8ToHex(JSON.stringify(generic)));
 
-            var query = { links: dummyUrl, permission: true };
+            // Plain CNL2 (/flash/add) carries the links themselves; only the
+            // encrypted variant needs JDownloader's dummycnl decoder.
+            var plainLinks = !generic.crypted && (generic.urls || generic.links);
+            var query = { links: plainLinks || dummyUrl, permission: true };
             var src = generic.source || sourceUrl;
             if (src) query.sourceUrl = src;
             if (generic.package) query.packageName = generic.package;
@@ -528,10 +550,17 @@ angular.module('myjdWebextensionApp')
             // device controller is still empty; the first add then fails with
             // DEVICE_NOT_EXISTING. A live refresh both validates availability and
             // populates the controller before the add request.
-            StorageService.get(StorageService.SETTINGS_DEFAULT_PREFERRED_JD, function (settingsResult) {
+            StorageService.getSettings(function (settings) {
+              applyCnlDefaults(query, settings || {});
+              StorageService.get(StorageService.ADD_LINK_CACHED_OPTIONS, function (cached) {
               myjdClientFactory.get().getDeviceList().then(function (deviceResult) {
                 var devices = deviceResult && deviceResult.result;
-                var preferred = settingsResult && settingsResult[StorageService.SETTINGS_DEFAULT_PREFERRED_JD];
+                var preferred = settings && settings[StorageService.SETTINGS_DEFAULT_PREFERRED_JD];
+                // "Last used" refers to the device chosen in the add-links dialog.
+                if (preferred && preferred.id === StorageService.LastUsedDevice.id) {
+                  preferred = cached && cached[StorageService.ADD_LINK_CACHED_OPTIONS] &&
+                    cached[StorageService.ADD_LINK_CACHED_OPTIONS].device;
+                }
                 var device = selectCnlDevice(devices, preferred);
                 if (!device) {
                   reject("NO_CONNECTED_DEVICE");
@@ -542,6 +571,7 @@ angular.module('myjdWebextensionApp')
                   resolve({ deviceName: device.name, response: response });
                 }).catch(reject);
               }).catch(reject);
+              });
             });
           } catch (e) {
             reject(e);
@@ -574,19 +604,24 @@ angular.module('myjdWebextensionApp')
       ExtensionMessagingService.addListener("myjd-cnl-capture", "captured", function (request, sender, sendResponse) {
         try {
           if (request.data && validCnlCapture(request.data) && sender && sender.tab && sender.tab.id !== undefined) {
+            // Not logged in or Click'n'Load switched off in the extension: let
+            // the page send the original request to 127.0.0.1:9666, where the
+            // MyJDownloader app (or a local JDownloader) can accept it.
             var formData = request.data.formData;
             var sourceUrl = sender.url || sender.tab.url || "";
-
-            // The CnL POST happens inside filecrypt's helper popup, which
-            // self-closes after ~3s. Safari does not expose openerTabId for it,
-            // so an in-page toolbar (with its send countdown) gets killed by the
-            // closing popup. Instead we build the dummycnl link and add it
-            // directly to the connected device over the https cloud API — no
-            // toolbar, no countdown, no tab dependency.
-            sendCnlDirect(formData, sourceUrl).then(function (result) {
-              sendResponse({ data: result });
-            }).catch(function (error) {
-              sendResponse({ error: readableCnlError(error) });
+            StorageService.get(StorageService.SETTINGS_CLICKNLOAD_ACTIVE, function (stored) {
+              if (!$scope.state.isConnected || (stored && stored[StorageService.SETTINGS_CLICKNLOAD_ACTIVE] === false)) {
+                sendResponse({ passthrough: true });
+                return;
+              }
+              // The CnL POST often happens inside a helper popup that closes
+              // itself after a few seconds, so no toolbar or countdown is used:
+              // the links go straight to the device over the HTTPS cloud API.
+              sendCnlDirect(formData, sourceUrl).then(function (result) {
+                sendResponse({ data: result });
+              }).catch(function (error) {
+                sendResponse({ error: readableCnlError(error) });
+              });
             });
           } else {
             sendResponse({ error: "Invalid request" });
@@ -1076,11 +1111,16 @@ angular.module('myjdWebextensionApp')
       // safeAddWebRequestListener degrades gracefully: it tries the blocking
       // registration first (Chrome/Firefox) and, on failure, retries as a
       // plain observer so the rest of the extension keeps working.
-      let safeAddWebRequestListener = function (event, listener, filter, extraInfo) {
+      // Listeners whose side effects assume blocking (closing the requesting
+      // tab, opening a toolbar without the request body) must pass
+      // observerFallback=false: as observers they would close the cryptor tab
+      // while the real request still goes to the content script/native port.
+      let safeAddWebRequestListener = function (event, listener, filter, extraInfo, observerFallback) {
         try {
           event.addListener(listener, filter, extraInfo);
           return true;
         } catch (e) {
+          if (observerFallback === false) return false;
           try {
             event.addListener(listener, filter);
           } catch (e2) {
@@ -1106,7 +1146,7 @@ angular.module('myjdWebextensionApp')
           safeAddWebRequestListener(chrome.webRequest.onBeforeRequest,
             interceptRequest, {
             urls: ["<all_urls>"]
-          }, ["requestBody", "blocking"]);
+          }, ["requestBody", "blocking"], false);
         }
       };
 
