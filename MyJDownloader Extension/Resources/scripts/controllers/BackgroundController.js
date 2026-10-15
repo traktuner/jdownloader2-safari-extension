@@ -1183,17 +1183,17 @@ angular.module('myjdWebextensionApp')
                       !tab.url.startsWith("https://")) ||
                       tab.url.startsWith("https://chrome.google.com/webstore/"); // injecting scripts to https://chrome.google.com/webstore/* is blocked by chrome
                     if (!isBlockedUrl) {
-                      $.each(scripts, function (index, script) {
-                        if (script === "contentscripts/webinterfaceEnhancer.js" && !tab.url.startsWith("https://my.jdownloader.org")) {
-                          return;
-                        }
-                        if (script === "contentscripts/browserSolverEnhancer.js" && !tab.url.match(/http:\/\/127.0.0.1:\d*\/.*\/.?id=\d+/gi)) {
-                          return;
-                        } else {
-                          chrome.tabs.executeScript(tab.id, {
-                            file: script
-                          });
-                        }
+                      // Safari already runs the manifest content scripts in open
+                      // tabs. Injecting them again redeclares their top-level
+                      // const/let bindings (SyntaxError "Can't create duplicate
+                      // variable") and would register Click'n'Load relays twice.
+                      // CaptchaFormInjector is a top-level binding of
+                      // rc2Contentscript.js, so its presence means "already loaded".
+                      chrome.tabs.executeScript(tab.id, {
+                        code: 'typeof CaptchaFormInjector !== "undefined"'
+                      }, function (results) {
+                        if (chrome.runtime.lastError || (results && results[0] === true)) return;
+                        injectScriptsIntoTab(tab, scripts);
                       });
                     }
                   });
@@ -1204,12 +1204,30 @@ angular.module('myjdWebextensionApp')
         });
       }
 
+      function injectScriptsIntoTab(tab, scripts) {
+        $.each(scripts, function (index, script) {
+          if (script === "contentscripts/webinterfaceEnhancer.js" && !tab.url.startsWith("https://my.jdownloader.org")) {
+            return;
+          }
+          if (script === "contentscripts/browserSolverEnhancer.js" && !tab.url.match(/http:\/\/127.0.0.1:\d*\/.*\/.?id=\d+/gi)) {
+            return;
+          } else {
+            chrome.tabs.executeScript(tab.id, {
+              file: script
+            });
+          }
+        });
+      }
+
       chrome.tabs.query({ url: "http://127.0.0.1/*" }, (tabs) => {
         // execute scripts in tabs that were opened before the extension was available
         $.each(tabs, (index, tab) => {
           if (tab.url.match(/http:\/\/127.0.0.1:\d*\/.*\/.?id=\d+/gi)) {
-            chrome.tabs.executeScript(tab.id, {
-              file: "contentscripts/browserSolverEnhancer.js"
+            chrome.tabs.executeScript(tab.id, { code: 'typeof BrowserSolverEnhancer !== "undefined"' }, function (results) {
+              if (chrome.runtime.lastError || (results && results[0] === true)) return;
+              chrome.tabs.executeScript(tab.id, {
+                file: "contentscripts/browserSolverEnhancer.js"
+              });
             });
           }
         });

@@ -27,12 +27,17 @@ angular.module('myjdWebextensionApp')
               clearInterval(intervalHandle);
             } else if (tabDetails.url.match(/http:\/\/127\.0\.0\.1:\d+\/captcha\/(recaptchav(2|3)|hcaptcha)\/.*\?id=\d+$/gm) !== null) {
               clearInterval(intervalHandle);
-              chrome.tabs.executeScript(tabId,
-                {
-                  file: '/contentscripts/browserSolverEnhancer.js',
-                  runAt: 'document_end',
-                  allFrames: true
-                });
+              // Safari reports these requests to an observer several times;
+              // a second injection would redeclare the script's top-level lets.
+              chrome.tabs.executeScript(tabId, { code: 'typeof BrowserSolverEnhancer !== "undefined"' }, function (results) {
+                if (chrome.runtime.lastError || (results && results[0] === true)) return;
+                chrome.tabs.executeScript(tabId,
+                  {
+                    file: '/contentscripts/browserSolverEnhancer.js',
+                    runAt: 'document_end',
+                    allFrames: true
+                  });
+              });
             }
           });
         }, 200);
