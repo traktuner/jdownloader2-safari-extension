@@ -19,6 +19,7 @@ import UserNotifications
 
 @main
 struct MyJDownloaderApp: App {
+    @NSApplicationDelegateAdaptor(AppLifecycle.self) private var lifecycle
     @StateObject private var jd = JDClient()
     @AppStorage("menuBarEnabled") private var menuBarEnabled = true
 
@@ -30,10 +31,45 @@ struct MyJDownloaderApp: App {
         }
         .defaultSize(width: 480, height: 480)
 
-        MenuBarExtra("MyJDownloader", image: "MenuBarIcon", isInserted: $menuBarEnabled) {
+        MenuBarExtra(isInserted: $menuBarEnabled) {
             MenuBarView(jd: jd)
+        } label: {
+            MenuBarLabel()
         }
         .menuBarExtraStyle(.window)
+    }
+}
+
+/// The app lives in the menu bar and runs the Click'n'Load port, so closing
+/// its only window must not quit it (SwiftUI's default for a single Window).
+/// Opening the app again (Finder, Spotlight) shows the settings window, which
+/// also covers a menu bar icon hidden behind the notch or disabled.
+final class AppLifecycle: NSObject, NSApplicationDelegate {
+    static var openSettings: (() -> Void)?
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { Self.openSettings?() }
+        return true
+    }
+}
+
+/// Menu bar icon; it exists for the app's whole lifetime, so it provides the
+/// window-opening action for reopen events.
+struct MenuBarLabel: View {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Image("MenuBarIcon")
+            .onAppear { registerOpenSettings(openWindow) }
+    }
+}
+
+func registerOpenSettings(_ openWindow: OpenWindowAction) {
+    AppLifecycle.openSettings = {
+        openWindow(id: "settings")
+        NSApp.activate()
     }
 }
 
@@ -908,6 +944,7 @@ struct ClickNLoadStatusView: View {
 struct SettingsView: View {
     @ObservedObject var jd: JDClient
     @Environment(\.dismissWindow) private var dismissWindow
+    @Environment(\.openWindow) private var openWindow
     @AppStorage("menuBarEnabled") private var menuBarEnabled = true
     @AppStorage("clickNLoadEnabled") private var clickNLoadEnabled = true
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -999,6 +1036,8 @@ struct SettingsView: View {
             if connected { password = "" }
         }
         .onAppear {
+            // Without a menu bar icon this window provides the reopen action.
+            registerOpenSettings(openWindow)
             refreshExtensionState()
             // Opening the window must not read the saved password just to
             // display an email address. The client retains it in memory.
