@@ -42,6 +42,18 @@ APP="$BUILD_DIR/Build/Products/Release/MyJDownloader.app"
 APPEX="$APP/Contents/PlugIns/MyJDownloader Extension.appex"
 ZIP="$BUILD_DIR/MyJDownloader.zip"
 
+# A plain `xcodebuild build` injects com.apple.security.get-task-allow, which
+# notarization rejects (archive/export would strip it). Disabling base
+# entitlement injection would also drop the sandbox entitlements, so remove only
+# this key and re-sign: embedded extension first, then the containing app.
+for bundle in "$APPEX" "$APP"; do
+  entitlements="$BUILD_DIR/$(basename "$bundle").entitlements.plist"
+  /usr/bin/codesign -d --entitlements - --xml "$bundle" > "$entitlements"
+  /usr/libexec/PlistBuddy -c 'Delete :com.apple.security.get-task-allow' "$entitlements" 2>/dev/null || true
+  /usr/bin/codesign --force --sign "Developer ID Application" --timestamp --options runtime \
+    --entitlements "$entitlements" "$bundle"
+done
+
 /usr/bin/codesign --verify --deep --strict --verbose=2 "$APP"
 for bundle in "$APP" "$APPEX"; do
   details="$(/usr/bin/codesign -dvv "$bundle" 2>&1)"
@@ -51,6 +63,13 @@ for bundle in "$APP" "$APPEX"; do
     exit 1
   }
   grep -q '^Timestamp=' <<< "$details" || { echo "$bundle has no secure timestamp." >&2; exit 1; }
+  # Notarization rejects the debugging entitlement Xcode can inject.
+  entitlements="$(/usr/bin/codesign -d --entitlements - --xml "$bundle" 2>/dev/null)"
+  if grep -q 'get-task-allow' <<< "$entitlements" || ! grep -q 'com.apple.security.app-sandbox' <<< "$entitlements"; then
+    echo "$bundle must keep the sandbox and must not carry get-task-allow:" >&2
+    echo "$entitlements" >&2
+    exit 1
+  fi
 done
 /usr/bin/lipo "$APP/Contents/MacOS/MyJDownloader" -verify_arch arm64 x86_64
 /usr/bin/lipo "$APPEX/Contents/MacOS/MyJDownloader Extension" -verify_arch arm64 x86_64
@@ -63,7 +82,12 @@ xcrun notarytool submit "$ZIP" \
   --issuer "$APP_STORE_CONNECT_ISSUER_ID" \
   --wait --timeout 30m --output-format json | tee "$BUILD_DIR/notarization.json"
 grep -q '"status" *: *"Accepted"' "$BUILD_DIR/notarization.json" || {
-  echo "Notarization was not accepted. Fetch the log with: xcrun notarytool log <id> ..." >&2
+  echo "Notarization was not accepted. Apple's log:" >&2
+  submission_id="$(sed -nE 's/.*"id" *: *"([^"]+)".*/\1/p' "$BUILD_DIR/notarization.json")"
+  xcrun notarytool log "$submission_id" \
+    --key "$APP_STORE_CONNECT_PRIVATE_KEY_PATH" \
+    --key-id "$APP_STORE_CONNECT_KEY_ID" \
+    --issuer "$APP_STORE_CONNECT_ISSUER_ID" >&2 || true
   exit 1
 }
 
