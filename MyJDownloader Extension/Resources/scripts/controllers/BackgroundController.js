@@ -413,6 +413,12 @@ angular.module('myjdWebextensionApp')
       // extension suppresses this until the next manual login.
       var NATIVE_LOGIN_SUPPRESSED = "NATIVE_LOGIN_SUPPRESSED";
       var nativeLoginPending = null;
+      // Resolved once init() has finished restoring the stored session. A
+      // shared login must not start before: MyjdService.connect(credentials)
+      // creates a new jdapi instance, and two concurrent handshakes leave one
+      // promise unresolved (the popup then stays at "Lade...").
+      var startupSessionDone;
+      var startupSession = $q(function (resolve) { startupSessionDone = resolve; });
 
       function sendNative(message) {
         return $q(function (resolve, reject) {
@@ -433,22 +439,29 @@ angular.module('myjdWebextensionApp')
       }
 
       function nativeLogin() {
-        if ($scope.state.isConnected && isApiLoggedIn()) return $q.resolve();
         if (nativeLoginPending) return nativeLoginPending;
+        var timeout;
         nativeLoginPending = $q(function (resolve, reject) {
-          StorageService.get(NATIVE_LOGIN_SUPPRESSED, function (stored) {
-            if (stored && stored[NATIVE_LOGIN_SUPPRESSED]) { reject("suppressed"); return; }
-            sendNative({ action: "get-credentials" }).then(function (credentials) {
-              return myjdClientFactory.get().connect({ email: credentials.email, password: credentials.password });
-            }).then(function () {
-              console.info("[MyJD] logged in with the app's account");
-              ExtensionMessagingService.sendMessage("myjd-toolbar", "session-change", { isLoggedIn: true });
-              injectContentScripts();
-              initSettings().then(initConnected);
-              resolve();
-            }).catch(reject);
+          timeout = $timeout(function () { reject("shared login timed out"); }, 20000);
+          startupSession.then(function () {
+            if (isApiLoggedIn()) { resolve(); return; }
+            StorageService.get(NATIVE_LOGIN_SUPPRESSED, function (stored) {
+              if (stored && stored[NATIVE_LOGIN_SUPPRESSED]) { reject("suppressed"); return; }
+              sendNative({ action: "get-credentials" }).then(function (credentials) {
+                return myjdClientFactory.get().connect({ email: credentials.email, password: credentials.password });
+              }).then(function () {
+                console.info("[MyJD] logged in with the app's account");
+                ExtensionMessagingService.sendMessage("myjd-toolbar", "session-change", { isLoggedIn: true });
+                injectContentScripts();
+                initSettings().then(initConnected);
+                resolve();
+              }).catch(reject);
+            });
           });
-        }).finally(function () { nativeLoginPending = null; });
+        }).finally(function () {
+          $timeout.cancel(timeout);
+          nativeLoginPending = null;
+        });
         return nativeLoginPending;
       }
 
@@ -1317,16 +1330,19 @@ angular.module('myjdWebextensionApp')
         if (myJDClient) {
           myJDClient.connect().then(function () {
             $scope.state.isConnected = true;
+            startupSessionDone();
             initSettings().then(initConnected);
           }).catch(function (error) {
             console.log("MyJD Extension init [SESSION]", error);
             $scope.state.isConnected = false;
+            startupSessionDone();
             initSettings().then(initDisconnected).then(function () {
               nativeLogin().catch(function (reason) { console.info("[MyJD] no shared login:", reason); });
             });
           });
         } else {
           $scope.state.isConnected = false;
+          startupSessionDone();
           initSettings().then(initDisconnected).then(function () {
             nativeLogin().catch(function (reason) { console.info("[MyJD] no shared login:", reason); });
           });
